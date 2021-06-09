@@ -1,30 +1,37 @@
 ENTRY(_start)
 
-SECTIONS
-{
-	. = 1M;
+KERNEL_PHYSICAL_BASE = 0x00100000;
+KERNEL_VIRTUAL_BASE = 0xC0100000;
 
-	.text BLOCK(4K) : ALIGN(4K)
-	{
-		*(.multiboot2)
+SECTIONS {
+	. = KERNEL_VIRTUAL_BASE;
+	_KERNEL_START_ = .;
+
+	.text ALIGN(4K) : AT(ADDR(.text) - (KERNEL_VIRTUAL_BASE - KERNEL_PHYSICAL_BASE)) {
+		_KERNEL_TEXT_START_ = .;
+		*(.boot.multiboot2)
+		*(.boot.text)
 		*(.text)
+		_KERNEL_TEXT_END_ = .;
 	}
 
-	.rodata BLOCK(4K) : ALIGN(4K)
-	{
+	.rodata ALIGN(4K) : AT(ADDR(.rodata) - (KERNEL_VIRTUAL_BASE - KERNEL_PHYSICAL_BASE)) {
+		_KERNEL_RODATA_START_ = .;
 		*(.rodata)
+		_KERNEL_RODATA_END_ = .;
 	}
 
-	.data BLOCK(4K) : ALIGN(4K)
-	{
+	.data ALIGN(4K) : AT(ADDR(.data) - (KERNEL_VIRTUAL_BASE - KERNEL_PHYSICAL_BASE)) {
+		_KERNEL_DATA_START_ = .;
 		*(.data)
+		_KERNEL_DATA_END_ = .;
 	}
 
-	.bss BLOCK(4K) : ALIGN(4K)
-	{
+	.bss ALIGN(4K) : AT(ADDR(.bss) - (KERNEL_VIRTUAL_BASE - KERNEL_PHYSICAL_BASE)) {
+		_KERNEL_BSS_START_ = .;
 		*(COMMON)
 		*(.bss)
+		_KERNEL_BSS_END_ = .;
 	}
-
 	_KERNEL_END_ = .;
 }

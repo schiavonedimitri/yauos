@@ -7,7 +7,7 @@
 
 static void print_int_u32(uint32_t value, uint8_t base) {
 	if (value == 0) {
-		terminal_put_char((value % base) + '0');
+		console_put_char((value % base) + '0');
 		return;
 	}
 	size_t size = 0;
@@ -24,16 +24,16 @@ static void print_int_u32(uint32_t value, uint8_t base) {
         buf[--tmp_size] = (value % base) + '0';
         value /= base;
     }
-    terminal_write_string(&buf[0]);
+    console_write_string(&buf[0]);
 }
 
 static void print_int_32(int32_t value, uint8_t base) {
 	if (value < 0) {
-		terminal_put_char('-');
+		console_put_char('-');
 	}
 	value = (value < 0 ? -value : value);
 	if (value == 0) {
-		terminal_put_char((value % base) + '0');
+		console_put_char((value % base) + '0');
 		return;
 	}
 	size_t size = 0;
@@ -50,12 +50,12 @@ static void print_int_32(int32_t value, uint8_t base) {
         buf[--tmp_size] = (value % base) + '0';
         value /= base;
     }
-    terminal_write_string(&buf[0]);
+    console_write_string(&buf[0]);
 }
 
 static void print_int_u64(uint64_t value, uint8_t base) {
 	if (value == 0) {
-		terminal_put_char((value % base) + '0');
+		console_put_char((value % base) + '0');
 		return;
 	}
 	size_t size = 0;
@@ -72,16 +72,16 @@ static void print_int_u64(uint64_t value, uint8_t base) {
         buf[--tmp_size] = (value % base) + '0';
         value /= base;
     }
-    terminal_write_string(&buf[0]);
+    console_write_string(&buf[0]);
 }
 
 static void print_int_64(int64_t value, uint8_t base) {
 	if (value < 0) {
-		terminal_put_char('-');
+		console_put_char('-');
 	}
 	value = (value < 0 ? -value : value);
 	if (value == 0) {
-		terminal_put_char((value % base) + '0');
+		console_put_char((value % base) + '0');
 		return;
 	}
 	size_t size = 0;
@@ -98,7 +98,7 @@ static void print_int_64(int64_t value, uint8_t base) {
         buf[--tmp_size] = (value % base) + '0';
         value /= base;
     }
-    terminal_write_string(&buf[0]);
+    console_write_string(&buf[0]);
 }
 
 static void print_hex_32(uint32_t value) {
@@ -120,8 +120,8 @@ static void print_hex_32(uint32_t value) {
 		'E',
 		'F'
 	};
-	terminal_put_char('0');
-	terminal_put_char('x');
+	console_put_char('0');
+	console_put_char('x');
 	bool first_non_zero = 0;
 	for (size_t i = 0, j = sizeof(uint32_t) * 8 - 4; i < sizeof(uint32_t) * 2; i++, j -= 4) {
 		char c = index[((value & (((uint32_t)0xF) << j)) >> j)];
@@ -129,11 +129,11 @@ static void print_hex_32(uint32_t value) {
 			first_non_zero = 1;
 		}
 		if (first_non_zero) {
-			terminal_put_char(c);
+			console_put_char(c);
 		}
 	}
 	if (!first_non_zero) {
-		terminal_put_char('0');
+		console_put_char('0');
 	}
 }
 
@@ -156,8 +156,8 @@ static void print_hex_64(uint64_t value) {
 		'E',
 		'F'
 	};
-	terminal_put_char('0');
-	terminal_put_char('x');
+	console_put_char('0');
+	console_put_char('x');
 	bool first_non_zero = 0;
 	for (size_t i = 0, j = sizeof(uint64_t) * 8 - 4; i < sizeof(uint64_t) * 2; i++, j -= 4) {
         char c = index[((value & (((uint64_t) 0xF) << j)) >> j)];
@@ -165,11 +165,11 @@ static void print_hex_64(uint64_t value) {
             first_non_zero = 1;
         }
         if (first_non_zero) {
-            terminal_put_char(c);
+            console_put_char(c);
         }
     }
     if (!first_non_zero) {
-        terminal_put_char('0');
+        console_put_char('0');
     }
 }
 
@@ -185,7 +185,7 @@ void printk (const char* restrict format, ...) {
 			while (format[amount] && format[amount] != '%') {
 				amount++;
 			}
-			terminal_write(format, amount);
+			console_write(format, amount);
 			format += amount;
 			continue;
 		}
@@ -193,7 +193,7 @@ void printk (const char* restrict format, ...) {
 		if (*format == 'c') {
 			format++;
 			char c = (char) va_arg(parameters, int);
-			terminal_put_char(c);
+			console_put_char(c);
 		} else if (*format == 'd') {
 			format++;
 			uint32_t d = (uint32_t) va_arg(parameters, uint32_t);
@@ -229,11 +229,11 @@ void printk (const char* restrict format, ...) {
 		} else if (*format == 's') {
 			format++;
 			const char *str = va_arg(parameters, const char*);
-			terminal_write_string(str);
+			console_write_string(str);
 		} else {
 			format = format_begun_at;
             size_t len = strlen(format);
-			terminal_write_string(format);
+			console_write_string(format);
 			format += len;
 		}
 	}

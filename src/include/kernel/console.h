@@ -4,12 +4,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
-void terminal_initialize(void);
-void terminal_clear(void);
-void terminal_put_entry_at(unsigned char, uint8_t, size_t, size_t);
-void terminal_put_char(char);
-void terminal_write(const char*, size_t);
-void terminal_write_string(const char*);
-void terminal_set_tab_size(size_t);
+void console_initialize(void);
+void console_clear(void);
+void console_put_entry_at(unsigned char, uint8_t, size_t, size_t);
+void console_put_char(char);
+void console_write(const char*, size_t);
+void console_write_string(const char*);
+void console_set_tab_size(size_t);
 
 #endif /** CONSOLE_H */
