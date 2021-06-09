@@ -1,1 +1,1 @@
-YAUOS (Yet Another Unix-like OS) is an hobby operating system i'm developing for education purposes. As soon as the project takes a better shape this will be updated with documentation, build instructions and so on.
+YAUOS (Yet Another Unix-like OS) is an hobby operating system i'm developing for educational purposes. As soon as the project takes shape this will be updated with documentation, build instructions and so on.
