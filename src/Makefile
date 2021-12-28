@@ -1,68 +1,61 @@
-#Most of these flags can be overriden by setting the corresponding environment variables before running make in the top level directory
-#TODO: in the future a configuration script should be provided to customize settings before building
-ARCH?=i386
-COMPILER_TARGET?=i686-elf
-AR=$(COMPILER_TARGET)-ar
-AS=$(COMPILER_TARGET)-as
-CC=$(COMPILER_TARGET)-gcc
-PROJECT_DIR?=/home/dimitri/Osdev/yauos
-SOURCE_DIR?=$(PROJECT_DIR)/src
-ISO_DIR?=$(PROJECT_DIR)/iso
+#Toolchain architecture options:
+ARCH	:=	i386
+COMPILER_TARGET	:=	i686-elf
+AR	:=	$(COMPILER_TARGET)-ar
+AS	:=	$(COMPILER_TARGET)-as
+CC	:=	$(COMPILER_TARGET)-gcc
+#Project directory options
+PROJECT_DIR	:=	$(HOME)/Osdev/yauos
+SOURCE_DIR	:=	$(PROJECT_DIR)/src
+ARCH_DIR	:=	$(SOURCE_DIR)/arch/$(ARCH)
+LIB_DIR	:=	$(SOURCE_DIR)/lib
+ISO_DIR	:=$(PROJECT_DIR)/iso
+#Size in bytes of the early boot heap
+EARLY_HEAP_SIZE?=4096
+#Toolchain general flags
+CFLAGS	:=	-O2 -MD -I$(SOURCE_DIR)/include -I$(SOURCE_DIR)/include/arch/$(ARCH)
+CFLAGS	+=	-ffreestanding -Wall -Wextra -std=gnu11 -DEARLY_HEAP_SIZE=$(EARLY_HEAP_SIZE)
+LDFLAGS	:=	-T $(ARCH_DIR)/linker.ld -nostdlib
+LIBS	:=	-lgcc
+#Qemu settings
+QEMU_MEM	:=	128M
+#Objects to build
+OBJS	:=	\
+	$(ARCH_DIR)/bootmem/bootmem.o	\
+	$(ARCH_DIR)/pmm/pmm.o	\
+	$(ARCH_DIR)/boot/boot.o	\
+	$(ARCH_DIR)/gdt/load_gdt.o	\
+	$(ARCH_DIR)/vga/vga.o	\
+	$(LIB_DIR)/string/string.o	\
+	$(LIB_DIR)/bitmap/bitmap.o	\
+	kernel/init/kernel.o	\
+	kernel/printk/printk.o
 
-#-MD tells the compiler to generate the .d files necessary for dependency tracking of #include directives in the source files
-CFLAGS?=-O2 -g -MD
-LDFLAGS?=
-LIBS?=
+LINK_LIST	:=	\
+	$(OBJS)	\
+	$(LIBS)
 
-CFLAGS:=$(CFLAGS) -ffreestanding -Wall -Wextra
-LDFLAGS:=$(LDFLAGS)
-LIBS:=$(LIBS) -nostdlib -lgcc
-
-ARCH_DIR:=$(SOURCE_DIR)/arch/$(ARCH)
-
-#include additonal compilation flags from the the architecture specific folder
-include $(ARCH_DIR)/include.mk
-#include dependency tacking files, on first build they will not exist so the '-' before the include directive option tells make \
-to not throw an error if it doesn't find them
+#Include gcc dependency files generated with -MD CFLAGS option for header files dependency tracking
 -include $(OBJS:.o=.d)
 
-#add architecture specific flags to existing compilation flags and architecture specific objects
-CFLAGS:=$(CFLAGS) $(KERNEL_ARCH_CFLAGS)
-LDFLAGS:=$(LDFLAGS) $(KERNEL_ARCH_LDFLAGS)
-LIBS:=$(LIBS) $(KERNEL_ARCH_LIBS)
+.DEFAULT_GOAL	:=	yauos
 
-KERNEL_OBJS=\
-$(KERNEL_ARCH_OBJS) \
-kernel/kernel.o \
-kernel/printk/printk.o\
-kernel/lib/string.o\
-
-OBJS=\
-$(KERNEL_OBJS) \
-
-LINK_LIST=\
-$(LDFLAGS) \
-$(KERNEL_OBJS) \
-$(LIBS) \
-
-.PHONY: all iso qemu clean
-
-all: yauos
+.PHONY:	all qemu clean
 
 yauos: $(OBJS) $(ARCH_DIR)/linker.ld
-	$(CC) -T $(ARCH_DIR)/linker.ld -o $@ $(CFLAGS) $(LINK_LIST)
+	$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(LINK_LIST)
 	grub-file --is-x86-multiboot2 yauos
 
 %.o : %.c
-	$(CC) -c $< -o $@ $(CFLAGS) -I$(SOURCE_DIR)
-
-%.o : %.S
-	$(CC) -c $< -o $@ $(CFLAGS) -I$(SOURCE_DIR)
+	$(CC) -c $< -o $@ $(CFLAGS)
 
 %.o : %.s
-	$(CC) -c $< -o $@ $(CFLAGS) -I$(SOURCE_DIR)
+	$(CC) -c $< -o $@ $(CFLAGS)
 
-iso: yauos
+%.o : %.S
+	$(CC) -c $< -o $@ $(CFLAGS)
+
+yauos.iso: yauos
 	mkdir -p $(PROJECT_DIR)/iso
 	mkdir -p $(ISO_DIR)/boot
 	mkdir -p $(ISO_DIR)/boot/grub
@@ -70,12 +63,15 @@ iso: yauos
 	@echo > $(ISO_DIR)/boot/grub/grub.cfg 'menuentry "yauos" { multiboot2 /boot/yauos }'
 	grub-mkrescue -o yauos.iso $(ISO_DIR)
 
-qemu: iso
-	qemu-system-$(ARCH) -cdrom yauos.iso
+qemu: yauos.iso
+	qemu-system-$(ARCH) -monitor stdio -m $(QEMU_MEM) -cdrom yauos.iso
+
+qemu-gdb: yauos.iso
+	qemu-system-$(ARCH) -monitor stdio -s -S -m $(QEMU_MEM) -cdrom yauos.iso
 
 clean:
 	rm -f yauos
 	rm -f $(OBJS)
 	rm -f $(OBJS:.o=.d)
 	rm -f yauos.iso
-	rm -rf $(ISO_DIR)/*
+	rm -rf $(ISO_DIR)

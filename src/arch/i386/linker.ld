@@ -9,8 +9,7 @@ SECTIONS {
 
 	.text ALIGN(4K) : AT(ADDR(.text) - (KERNEL_VIRTUAL_BASE - KERNEL_PHYSICAL_BASE)) {
 		_KERNEL_TEXT_START_ = .;
-		*(.boot.multiboot2)
-		*(.boot.text)
+		*(.multiboot2)
 		*(.text)
 		_KERNEL_TEXT_END_ = .;
 	}

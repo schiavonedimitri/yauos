@@ -1,6 +1,7 @@
-#include "arch/i386/cpu/mmu.h"
-
-.section .boot.multiboot2
+#include <arch/mmu.h>
+# Please note that this project uses the AT&T assembly syntax.
+# defining a separate section for the multiboot2 header because it needs to be linked first in order for a multiboot2 compliant bootloader to boot us. See the linker script.
+.section .multiboot2
 
 	header_start:
 		# Multiboot2 magic
@@ -34,69 +35,88 @@
 # 'GDTR': Even though the segment registers are set up as described above, the ‘GDTR’ may be invalid, so the OS image must not load any segment registers (even just reloading the same values!) until it sets up its own ‘GDT’.
 # 'IDTR': The OS image must leave interrupts disabled until it sets up its own IDT.
 
-.global boot_page_directory
-.type boot_page_directory, @object
+
+# Make the global directory and initial page table public symbols for the kernel to reuse these memory in later stages.
+.global kernel_directory
+.type kernel_directory, @object
+
+.global bootmem_start
+#.type bootmem_start, @object
+
+.global bootmem_end
+#.type bootmem_end, @object
+
+.global boot_page_table
+.type boot_page_table, @object
 
 .section .bss
+	# This is going to be an area of EARLY_HEAP_SIZE bytes used for memory allocation early in the boot stage. Among other things it will be used to booststrap the physical memory system itself.
 	.align 4096
+	bootmem_start:
+	.skip EARLY_HEAP_SIZE
+	bootmem_end:
 	# This is going to be the location of the kernel page directory which will be used throughout the rest of the kernel.
+	.align 4096
 	kernel_directory:
 		.skip 4096
-	# Location of the first page table (4KB) that maps the first 4MB physical addresses starting from 0x00000000.
+	# Location of the first page table (4Kb) that maps the first 4Mb physical addresses starting from 0x00000000.
 	# This memory will be reused in higher layers of the kernel initialization.
+	.align 4096
 	boot_page_table:
 		.skip 4096
-
-	.align 16
 	# Initial stack for the kernel.
+	.align 4
 	stack_bottom:
 		.skip 4096
 	stack_top:
 
-.section .boot.text
+.section .text
 
 	# Main entry point in the elf object.
 	.global _start
 	.type _start, @function
 
 	_start:
-		# Setup the first page table of the kernel to map the first 4MB physical memory starting at physical location 0x00000000.
-		# VIRTUAL_TO_PHYSICAL is needed because the kernel is linked at 0xC0100000 but is actually loaded at 0x100000.
-		# before paging is enabled manual address fixup is needed.
+		# Setup the first page table of the kernel to map the first 2Mb physical memory starting at physical location 0x00000001.
+		# VIRTUAL_TO_PHYSICAL is needed because the kernel is linked at 0xC0100000 but is actually loaded at 0x100000, see the linker script.
+		# Manual address fixing is needed because all addresses are virtual but paging is still disabled and we need to work with physical addresses until then.
+		# Also note that here pages are mapped read/write for all the kernel, in a later initialization stage these pages will be remapped with the correct permissions
+		# according to the elf sections of the kernel image and according to memory map important parts (like bios, vga etc..).
 		movl $VIRTUAL_TO_PHYSICAL(boot_page_table), %edi
 		movl $0, %esi
-		# Loop only 1023 because the last entry is reserved to map the VGA text mode buffer at 0xB8000 to 0xC03FF000.
-		# This is only temporary until the final kernel memory map is actually designed.
-		movl $1023, %ecx
+		movl $512, %ecx
 	_loop:
 		movl %esi, %edx
-		orl $0x003, %edx
+		orl $3, %edx
 		movl %edx, (%edi)
 		addl $4096, %esi
 		addl $4, %edi
 		loop _loop
-		movl $(0x000B8000 | 0x003), VIRTUAL_TO_PHYSICAL(boot_page_table) + 1023 * 4
 		# The first directory entry is needed for identity mapping physical addresses to virtual addresses.
 		# This is needed in order to avoid a triple fault on the instruction that jumps to the virtual addresses after enabling paging (which is still in lower addresses).
 		movl $(VIRTUAL_TO_PHYSICAL(boot_page_table) + 0x003), VIRTUAL_TO_PHYSICAL(kernel_directory)
 		# Actual directory that performs the required mapping to 0xC0000000.
 		movl $(VIRTUAL_TO_PHYSICAL(boot_page_table) + 0x003), VIRTUAL_TO_PHYSICAL(kernel_directory) + 768 * 4
 		movl $(VIRTUAL_TO_PHYSICAL(kernel_directory)), %ecx
+		# Pointing cr3 to the kernel directory just created.
 		movl %ecx, %cr3
 		movl %cr0, %ecx
-		orl $0x80010000, %ecx
+		# Enabling paging by setting the 31st bit of cr0
+		# Using 0x80010001 as mask because the 0th bit is the PE bit which was already set by the bootloader while the 16th bit is the WP bit which lets us make some pages read only even in supervisor mode
+		# that is, to protect kernel code pages and read only data pages from being modified even by the kernel itself (unless the page tables are modified).
+		orl $0x80010001, %ecx
 		movl %ecx, %cr0
-		lea higher_half, %ecx
-		# Go to virtual addresses.
-		jmp *%ecx
-
-.section .text
+		leal higher_half, %ecx
+		# Go to virtual addresses by using an indirect jump because no gdt has been setup yet.
+		jmpl *%ecx
 
 	higher_half:
 		# Remove identity map because it isn't needed anymore.
 		movl $0, kernel_directory
+		# This is needed to force a TLB flush, otherwise the old identity mapping could persist indefinitely (As per Intel manual).
 		movl %cr3, %ecx
 		movl %ecx, %cr3
+		# Set initial stack frame and call kernel c code entry point.
 		movl $stack_top, %esp
 		movl %esp, %ebp
 		# The multiboot2 structure was still using the old physical address, fix it.
