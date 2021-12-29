@@ -35,24 +35,24 @@ typedef union header {
 	Align x;
 } Header;
 
-static void *memory_end = &bootmem_end;
-static void *free_mem_ptr = &bootmem_start;
+static virt_addr_t *memory_end = &bootmem_end;
+static virt_addr_t *free_mem_ptr = &bootmem_start;
 static Header base;
 static Header *freep;
 
-static void* balloc(size_t bytes) {
+static virt_addr_t* balloc(size_t bytes) {
 	if (!IS_ALIGNED(free_mem_ptr, alignof(Align))) {
-		free_mem_ptr = ALIGN(free_mem_ptr, alignof(Align));
+		free_mem_ptr = (virt_addr_t*) ALIGN(free_mem_ptr, alignof(Align));
 	}
 	if ((uint32_t) free_mem_ptr + bytes > (uint32_t) memory_end) {
-		return (void*) -1;
+		return (virt_addr_t*) -1;
 	}
-	void *mem_ptr = free_mem_ptr;
-	free_mem_ptr = (void*) (uint32_t) free_mem_ptr + bytes;
+	virt_addr_t *mem_ptr = free_mem_ptr;
+	free_mem_ptr = (virt_addr_t*) (uint32_t) free_mem_ptr + bytes;
 	return mem_ptr;
 }
 
-void bfree(void *ap) {
+void bfree(virt_addr_t *ap) {
 	Header *bp, *p;
 	bp = (Header*) ap - 1;
 	for (p = freep; !(bp > p && bp < p->s.ptr); p = p->s.ptr) {
@@ -78,22 +78,22 @@ void bfree(void *ap) {
 }
 
 static Header* morecore(size_t n_units) {
-	char *p;
+	virt_addr_t *p;
 	Header *hp;
 	if (n_units < MORECORE_DEFAULT) {
 		n_units = MORECORE_DEFAULT;
 	}
 	p = balloc(n_units * sizeof(Header));
-	if (p == (char*) -1) {
-		return 0;
+	if (p == (virt_addr_t*) -1) {
+		return (Header*) 0;
 	}
 	hp = (Header*) p;
 	hp->s.size = n_units;
-	bfree((void*) (hp + 1));
+	bfree((virt_addr_t*) (hp + 1));
 	return freep;
 }
 
-void* bmalloc(size_t n_bytes) {
+virt_addr_t* bmalloc(size_t n_bytes) {
 	Header *p, *prevp;
 	size_t n_units;
 	n_units = (n_bytes + sizeof(Header) - 1) / sizeof(Header) + 1;
@@ -112,11 +112,11 @@ void* bmalloc(size_t n_bytes) {
 				p->s.size = n_units;
 			}
 			freep = prevp;
-			return (void*)(p + 1);
+			return (virt_addr_t*) (p + 1);
 		}
 		if (p == freep) {
 			if((p = morecore(n_units)) == 0) {
-				return NULL;
+				return (virt_addr_t*) 0;
 			}
 		}
 	}

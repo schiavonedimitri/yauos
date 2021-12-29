@@ -11,16 +11,23 @@ ARCH_DIR	:=	$(SOURCE_DIR)/arch/$(ARCH)
 LIB_DIR	:=	$(SOURCE_DIR)/lib
 ISO_DIR	:=$(PROJECT_DIR)/iso
 #Size in bytes of the early boot heap
-EARLY_HEAP_SIZE?=4096
+EARLY_HEAP_SIZE	?=	4096
+DEBUG_ENABLE	?=	1
+ifeq ($(DEBUG_ENABLE), 1)
+DEBUG	:=	-DDEBUG
+else
+DEBUG	:=
+endif
 #Toolchain general flags
-CFLAGS	:=	-O2 -MD -I$(SOURCE_DIR)/include -I$(SOURCE_DIR)/include/arch/$(ARCH)
-CFLAGS	+=	-ffreestanding -Wall -Wextra -std=gnu11 -DEARLY_HEAP_SIZE=$(EARLY_HEAP_SIZE)
+CFLAGS	:=	-O3 -MD -I$(SOURCE_DIR)/include -I$(SOURCE_DIR)/include/arch/$(ARCH)
+CFLAGS	+=	-ffreestanding -Wall -Wextra -std=gnu11 -DEARLY_HEAP_SIZE=$(EARLY_HEAP_SIZE) $(DEBUG)
 LDFLAGS	:=	-T $(ARCH_DIR)/linker.ld -nostdlib
 LIBS	:=	-lgcc
 #Qemu settings
 QEMU_MEM	:=	128M
 #Objects to build
 OBJS	:=	\
+	$(ARCH_DIR)/halt/halt.o	\
 	$(ARCH_DIR)/bootmem/bootmem.o	\
 	$(ARCH_DIR)/pmm/pmm.o	\
 	$(ARCH_DIR)/boot/boot.o	\

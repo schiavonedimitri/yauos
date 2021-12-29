@@ -35,11 +35,9 @@ static void read_memory_map(multiboot2_information_header_t *m_boot2_info) {
 				entry++;
 			}
 			memory = (memory_entry_t*) bmalloc(sizeof(memory_entry_t) * number_available_entries);
+			assert(memory);
 			m_map_size = number_available_entries;
-			if (!memory) {
-				printk("%s\t%d: bmalloc() failed\n", __FILE__, __LINE__);
-				for(;;);
-			}
+			assert((virt_addr_t*) memory != (virt_addr_t*) 0);
 			m_map = memory;
 			entry = (multiboot2_tag_memory_map_entry_t*) memory_map->entries;
 			for (size_t i = 0; i < number_entries; i++) {
@@ -61,34 +59,30 @@ void pmm_init(multiboot2_information_header_t *m_boot2_info) {
 	read_memory_map(m_boot2_info);
 	size_t max_blocks = memory_size / PAGE_SIZE;
 	size_t pmm_size = max_blocks / 8;
-	size_t k_size = (uint32_t) k_end - (uint32_t) k_start;
-	phys_addr_t *ptr = (phys_addr_t*) -1;
+	phys_addr_t *ptr = (phys_addr_t*) 0;
 	if (max_blocks % 8) {
 		pmm_size++;
 	}
 	for (size_t i = 0; i < m_map_size; i++) {
-		ptr = (void*) -1;
+		ptr = (phys_addr_t*) 0;
 		if(m_map[i].length >= pmm_size) {
 			if (m_map[i].start_addr != (uint32_t) k_start) {
 				if ((phys_addr_t*) ((uint32_t) (ptr = (phys_addr_t*) (uint32_t) m_map[i].start_addr) + pmm_size - 1) < k_start) {
 					break;
 				}
 				else {
-					if ((phys_addr_t*) ((uint32_t) (ptr = (void*) k_end) + pmm_size - 1) <= (phys_addr_t*) (uint32_t) m_map[i].end_addr) {
+					if ((phys_addr_t*) ((uint32_t) (ptr = (phys_addr_t*) k_end) + pmm_size - 1) <= (phys_addr_t*) (uint32_t) m_map[i].end_addr) {
 						break;
 					}
 				}
 			}
 			else {
-				if ((phys_addr_t*) ((uint32_t) (ptr = (void*) k_end) + pmm_size - 1) <= (phys_addr_t*) (uint32_t) m_map[i].end_addr) {
+				if ((phys_addr_t*) ((uint32_t) (ptr = (phys_addr_t*) k_end) + pmm_size - 1) <= (phys_addr_t*) (uint32_t) m_map[i].end_addr) {
 					break;
 				}
 			}
 		}
 	}
-	if (ptr == (void*) -1) {
-		printk("%s\t%d\nPanic: Could not find memory to store memory bitmap\n", __FILE__, __LINE__);
-		for(;;);
-	}
+	assert(ptr);
 	pmm_bitmap = ptr;
 }

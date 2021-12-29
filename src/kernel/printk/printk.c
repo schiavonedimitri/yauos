@@ -5,6 +5,8 @@
 #include <arch/vga.h>
 #include <kernel/printk.h>
 
+void halt(void);
+
 static void print_int_u32(uint32_t value, uint8_t base) {
 	if (value == 0) {
 		vga_put_c((value % base) + '0');
@@ -173,7 +175,7 @@ static void print_hex_64(uint64_t value) {
     }
 }
 
-void printk (const char* restrict format, ...) {
+void _printk(bool panic, const char* restrict format, ...) {
 	va_list parameters;
 	va_start(parameters, format);
 	while (*format) {
@@ -248,4 +250,7 @@ void printk (const char* restrict format, ...) {
 		}
 	}
 	va_end(parameters);
+	if (panic) {
+		halt();
+	}
 }
