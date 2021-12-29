@@ -59,12 +59,12 @@ void pmm_init(multiboot2_information_header_t *m_boot2_info) {
 	read_memory_map(m_boot2_info);
 	size_t max_blocks = memory_size / PAGE_SIZE;
 	size_t pmm_size = max_blocks / 8;
-	phys_addr_t *ptr = (phys_addr_t*) 0;
+	phys_addr_t *ptr = (phys_addr_t*) -1;
 	if (max_blocks % 8) {
 		pmm_size++;
 	}
 	for (size_t i = 0; i < m_map_size; i++) {
-		ptr = (phys_addr_t*) 0;
+		ptr = (phys_addr_t*) -1;
 		if(m_map[i].length >= pmm_size) {
 			if (m_map[i].start_addr != (uint32_t) k_start) {
 				if ((phys_addr_t*) ((uint32_t) (ptr = (phys_addr_t*) (uint32_t) m_map[i].start_addr) + pmm_size - 1) < k_start) {
@@ -83,6 +83,6 @@ void pmm_init(multiboot2_information_header_t *m_boot2_info) {
 			}
 		}
 	}
-	assert(ptr);
+	assert(ptr != (phys_addr_t*) -1);
 	pmm_bitmap = ptr;
 }
