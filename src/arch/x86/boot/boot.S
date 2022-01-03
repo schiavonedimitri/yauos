@@ -139,6 +139,3 @@
 		loop:
 			hlt
 			jmp loop
-	message:
-		.ascii "edx = %x\n"
-		.byte 0
