@@ -2,7 +2,6 @@
 #define VGA_H
 
 #include <stddef.h>
-#include <stdint.h>
 
 void vga_initialize(void);
 void vga_clear(void);

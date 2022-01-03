@@ -1,6 +1,8 @@
 #ifndef MULTIBOOT2_H
 #define MULTIBOOT2_H
 
+#include <stdint.h>
+
 #define MULTIBOOT2_MAGIC 0x36d76289
 #define MULTIBOOT2_TAG_ALIGN 8
 #define MULTIBOOT2_TAG_END_TYPE 0

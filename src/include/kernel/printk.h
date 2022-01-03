@@ -1,5 +1,6 @@
 #ifndef PRINTK_H
 #define PRINTK_H
+
 #include <stdbool.h>
 
 void _printk(bool panic, const char* __restrict, ...);

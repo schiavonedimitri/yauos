@@ -1,5 +1,5 @@
 #Toolchain architecture options:
-ARCH	:=	i386
+ARCH	:=	x86
 COMPILER_TARGET	:=	i686-elf
 AR	:=	$(COMPILER_TARGET)-ar
 AS	:=	$(COMPILER_TARGET)-as
@@ -20,17 +20,21 @@ DEBUG	:=
 endif
 #Toolchain general flags
 CFLAGS	:=	-O3 -MD -I$(SOURCE_DIR)/include -I$(SOURCE_DIR)/include/arch/$(ARCH)
-CFLAGS	+=	-ffreestanding -Wall -Wextra -std=gnu11 -DEARLY_HEAP_SIZE=$(EARLY_HEAP_SIZE) $(DEBUG)
+CFLAGS	+=	-ffreestanding -Wall -Wextra -std=gnu11 -DARCH=$(ARCH) -DEARLY_HEAP_SIZE=$(EARLY_HEAP_SIZE) $(DEBUG)
 LDFLAGS	:=	-T $(ARCH_DIR)/linker.ld -nostdlib
 LIBS	:=	-lgcc
 #Qemu settings
 QEMU_MEM	:=	128M
+QEMU_ARCH	:=	i386
 #Objects to build
 OBJS	:=	\
 	$(ARCH_DIR)/halt/halt.o	\
 	$(ARCH_DIR)/bootmem/bootmem.o	\
 	$(ARCH_DIR)/pmm/pmm.o	\
+	$(ARCH_DIR)/vmm/flush_tlb_all.o	\
+	$(ARCH_DIR)/vmm/flush_tlb_single.o	\
 	$(ARCH_DIR)/boot/boot.o	\
+	$(ARCH_DIR)/gdt/gdt.o	\
 	$(ARCH_DIR)/gdt/load_gdt.o	\
 	$(ARCH_DIR)/vga/vga.o	\
 	$(LIB_DIR)/string/string.o	\
@@ -71,10 +75,10 @@ yauos.iso: yauos
 	grub-mkrescue -o yauos.iso $(ISO_DIR)
 
 qemu: yauos.iso
-	qemu-system-$(ARCH) -monitor stdio -m $(QEMU_MEM) -cdrom yauos.iso
+	qemu-system-$(QEMU_ARCH) -monitor stdio -m $(QEMU_MEM) -cdrom yauos.iso
 
 qemu-gdb: yauos.iso
-	qemu-system-$(ARCH) -monitor stdio -s -S -m $(QEMU_MEM) -cdrom yauos.iso
+	qemu-system-$(QEMU_ARCH) -monitor stdio -s -S -m $(QEMU_MEM) -cdrom yauos.iso
 
 clean:
 	rm -f yauos

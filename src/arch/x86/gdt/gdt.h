@@ -1,5 +1,5 @@
-#ifndef GDT_H
-#define GDT_H
+#ifndef _GDT_H
+#define _GDT_H
 
 #include <stdint.h>
 
@@ -75,35 +75,33 @@ struct gdt_entry {
 
 typedef struct gdt_entry gdt_entry_t;
 
-struct gdt_descriptor {
+typedef struct gdt_descriptor {
 	uint16_t table_size;
 	gdt_entry_t *table_address;
-} __attribute__((packed));
-
-typedef struct gdt_descriptor gdt_descriptor_t;
+} __attribute__((packed)) gdt_descriptor_t;
 
 #define SEGMENT(base, limit, accessed, readable_or_writable, conforming_or_expand_down, type, s, descriptor_privilege_level, present, available, reserved, default_operand_size_or_big, granularity) \
 	(gdt_entry_t) { \
-					(uint16_t)((limit >> 12) & 0xFFFF), \
-					(uint16_t)(base & 0xFFFF), \
-					(uint8_t)((base >> 16) & 0xFF), \
-					(uint8_t)(accessed), \
-					(uint8_t)(readable_or_writable), \
-					(uint8_t)(conforming_or_expand_down), \
-					(uint8_t)(type), \
-					(uint8_t)(s), \
-					(uint8_t)((descriptor_privilege_level >> 30) & 0x3), \
-					(uint8_t)(present), \
-					(uint8_t)(limit >> 28), \
-					(uint8_t)(available), \
-					(uint8_t)(reserved), \
-					(uint8_t)(default_operand_size_or_big), \
-					(uint8_t)(granularity), \
-					(uint8_t)(base >> 24) \
+					(uint16_t) ((limit >> 12) & 0xFFFF), \
+					(uint16_t) (base & 0xFFFF), \
+					(uint8_t) ((base >> 16) & 0xFF), \
+					(uint8_t) (accessed), \
+					(uint8_t) (readable_or_writable), \
+					(uint8_t) (conforming_or_expand_down), \
+					(uint8_t) (type), \
+					(uint8_t) (s), \
+					(uint8_t) ((descriptor_privilege_level >> 30) & 0x3), \
+					(uint8_t) (present), \
+					(uint8_t) (limit >> 28), \
+					(uint8_t) (available), \
+					(uint8_t) (reserved), \
+					(uint8_t) (default_operand_size_or_big), \
+					(uint8_t) (granularity), \
+					(uint8_t) (base >> 24) \
 	}
 
 #define SEGMENT_NULL SEGMENT(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 #define SEGMENT_KCODE(base, limit) (SEGMENT(base, limit, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1))
 #define SEGMENT_KDATA(base, limit) (SEGMENT(base, limit, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1))
 
-#endif /** GDT_H */
+#endif /** _GDT_H */

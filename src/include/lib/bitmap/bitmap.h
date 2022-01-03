@@ -1,6 +1,8 @@
 #ifndef BITMAP_H
 #define BITMAP_H
 
+#include <stddef.h>
+
 void bitmap_set(void *bitmap, int bit);
 void bitmap_unset(void *bitmap, int bit);
 int bitmap_test(void *bitmap, int bit);

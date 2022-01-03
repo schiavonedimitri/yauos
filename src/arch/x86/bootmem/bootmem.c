@@ -1,14 +1,9 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdalign.h>
-#include <arch/bootmem.h>
 #include <arch/defs.h>
-
-/*
- * Used by morecore() to request memory chunks. By default it requests 1024Kb chunks per call.
- * Shouldn't be higher than EARLY_HEAP_SIZE / sizeof(Header) or allocations will fail due to the pool being limited to EARLY_HEAP_SIZE bytes.
- */
-#define MORECORE_DEFAULT 128
+#include <arch/types.h>
+#include "bootmem.h"
 
 /*
  * This an implementation of the K&R malloc for use during early boot. Although a heap early in the boot is overkill it is indeed convenient.
@@ -22,37 +17,24 @@
  * Nevertheless the convenience of having a free and since the allocator manages such a small memory pool should add little to no overhead for great added functionality.
  */
 
-extern uintptr_t bootmem_start;
-extern uintptr_t bootmem_end;
-
-typedef long Align;
-
-typedef union header {
-	struct {
-	union header *ptr;
-	size_t size;
-	} s;
-	Align x;
-} Header;
-
-static virt_addr_t *memory_end = &bootmem_end;
-static virt_addr_t *free_mem_ptr = &bootmem_start;
+static void *memory_end = &bootmem_end;
+static void *free_mem_ptr = &bootmem_start;
 static Header base;
 static Header *freep;
 
-static virt_addr_t* balloc(size_t bytes) {
+static void* balloc(size_t bytes) {
 	if (!IS_ALIGNED(free_mem_ptr, alignof(Align))) {
-		free_mem_ptr = (virt_addr_t*) ALIGN(free_mem_ptr, alignof(Align));
+		free_mem_ptr = (void*) ALIGN(free_mem_ptr, alignof(Align));
 	}
-	if ((uint32_t) free_mem_ptr + bytes > (uint32_t) memory_end) {
-		return (virt_addr_t*) -1;
+	if ((uintptr_t) free_mem_ptr + bytes > (uintptr_t) memory_end) {
+		return (void*) -1;
 	}
-	virt_addr_t *mem_ptr = free_mem_ptr;
-	free_mem_ptr = (virt_addr_t*) (uint32_t) free_mem_ptr + bytes;
+	void *mem_ptr = (void*) free_mem_ptr;
+	free_mem_ptr = (void*) (uintptr_t) free_mem_ptr + bytes;
 	return mem_ptr;
 }
 
-void bfree(virt_addr_t *ap) {
+void bfree(void *ap) {
 	Header *bp, *p;
 	bp = (Header*) ap - 1;
 	for (p = freep; !(bp > p && bp < p->s.ptr); p = p->s.ptr) {
@@ -78,22 +60,22 @@ void bfree(virt_addr_t *ap) {
 }
 
 static Header* morecore(size_t n_units) {
-	virt_addr_t *p;
+	void *p;
 	Header *hp;
 	if (n_units < MORECORE_DEFAULT) {
 		n_units = MORECORE_DEFAULT;
 	}
 	p = balloc(n_units * sizeof(Header));
-	if (p == (virt_addr_t*) -1) {
+	if (p == (void*) -1) {
 		return (Header*) 0;
 	}
 	hp = (Header*) p;
 	hp->s.size = n_units;
-	bfree((virt_addr_t*) (hp + 1));
+	bfree((void*) (hp + 1));
 	return freep;
 }
 
-virt_addr_t* bmalloc(size_t n_bytes) {
+void* bmalloc(size_t n_bytes) {
 	Header *p, *prevp;
 	size_t n_units;
 	n_units = (n_bytes + sizeof(Header) - 1) / sizeof(Header) + 1;
@@ -112,11 +94,11 @@ virt_addr_t* bmalloc(size_t n_bytes) {
 				p->s.size = n_units;
 			}
 			freep = prevp;
-			return (virt_addr_t*) (p + 1);
+			return (void*) (p + 1);
 		}
 		if (p == freep) {
 			if((p = morecore(n_units)) == 0) {
-				return (virt_addr_t*) 0;
+				return (void*) 0;
 			}
 		}
 	}

@@ -77,7 +77,12 @@
 	.type _start, @function
 
 	_start:
-		# Setup the first page table of the kernel to map the first 2Mb physical memory starting at physical location 0x00000001.
+		#zero the general purpose registers but eax and ebx because they contain data left by the bootloader.
+		xorl %edx, %edx
+		movl %edx, %ecx
+		movl %edx, %esi
+		movl %edx, %edi
+		# Setup the first page table of the kernel to map the first 2Mb physical memory starting at physical location 0x00000000.
 		# VIRTUAL_TO_PHYSICAL is needed because the kernel is linked at 0xC0100000 but is actually loaded at 0x100000, see the linker script.
 		# Manual address fixing is needed because all addresses are virtual but paging is still disabled and we need to work with physical addresses until then.
 		# Also note that here pages are mapped read/write for all the kernel, in a later initialization stage these pages will be remapped with the correct permissions
@@ -97,6 +102,8 @@
 		movl $(VIRTUAL_TO_PHYSICAL(boot_page_table) + 0x003), VIRTUAL_TO_PHYSICAL(kernel_directory)
 		# Actual directory that performs the required mapping to 0xC0000000.
 		movl $(VIRTUAL_TO_PHYSICAL(boot_page_table) + 0x003), VIRTUAL_TO_PHYSICAL(kernel_directory) + 768 * 4
+		# Recurive directory entry.
+		movl $(VIRTUAL_TO_PHYSICAL(kernel_directory) + 0x003), VIRTUAL_TO_PHYSICAL(kernel_directory) + 1023 * 4
 		movl $(VIRTUAL_TO_PHYSICAL(kernel_directory)), %ecx
 		# Pointing cr3 to the kernel directory just created.
 		movl %ecx, %cr3
@@ -132,3 +139,6 @@
 		loop:
 			hlt
 			jmp loop
+	message:
+		.ascii "edx = %x\n"
+		.byte 0

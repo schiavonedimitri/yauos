@@ -1,9 +1,10 @@
-#include <limits.h>
-#include <stdbool.h>
 #include <stdarg.h>
-#include <lib/string/string.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <arch/vga.h>
 #include <kernel/printk.h>
+#include <lib/string/string.h>
 
 void halt(void);
 
@@ -126,7 +127,7 @@ static void print_hex_32(uint32_t value) {
 	vga_put_c('x');
 	bool first_non_zero = 0;
 	for (size_t i = 0, j = sizeof(uint32_t) * 8 - 4; i < sizeof(uint32_t) * 2; i++, j -= 4) {
-		char c = index[((value & (((uint32_t)0xF) << j)) >> j)];
+		char c = index[((value & (((uint32_t) 0xF) << j)) >> j)];
 		if (c != '0') {
 			first_non_zero = 1;
 		}

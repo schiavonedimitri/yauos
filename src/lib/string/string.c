@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include <lib/string/string.h>
 #include <kernel/printk.h>
 
