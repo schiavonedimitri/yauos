@@ -1,7 +1,7 @@
 #ifndef _BITMAP_H
 #define _BITMAP_H
 
-#if ARCH == x86
+#if ARCH == i386
 
 #define BITMAP_BITS 32
 #define BITMAP_FULL_MASK 0xFFFFFFFF

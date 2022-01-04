@@ -1,88 +1,102 @@
-#Toolchain architecture options:
-ARCH	:=	x86
-COMPILER_TARGET	:=	i686-elf
-AR	:=	$(COMPILER_TARGET)-ar
-AS	:=	$(COMPILER_TARGET)-as
-CC	:=	$(COMPILER_TARGET)-gcc
-#Project directory options
-PROJECT_DIR	:=	$(HOME)/Osdev/yauos
-SOURCE_DIR	:=	$(PROJECT_DIR)/src
-ARCH_DIR	:=	$(SOURCE_DIR)/arch/$(ARCH)
-LIB_DIR	:=	$(SOURCE_DIR)/lib
+ARCH?=i386
+PLATFORM?=pc
+
+COMPILER_DIR:=$(realpath ..)/toolchain/bin
+COMPILER_TARGET:=$(COMPILER_DIR)/$(ARCH)-elf
+
+AR:=$(COMPILER_TARGET)-ar
+AS:=$(COMPILER_TARGET)-as
+CC:=$(COMPILER_TARGET)-gcc
+LD:=$(COMPILER_TARGET)-ld
+OBJDUMP:=$(COMPILER_TARGET)-objdump
+OBJCOPY:=$(COMPILER_TARGET)-objcopy
+READELF:=$(COMPILER_TARGET)-readelf
+
+PROJECT_DIR:=$(realpath ..)
+SRC_DIR:=$(PROJECT_DIR)/src
+ARCH_DIR:=$(SRC_DIR)/arch/$(ARCH)
+PLATFORM_DIR:=$(SRC_DIR)/arch/$(ARCH)/platform/$(PLATFORM)
+LIB_DIR=$(SRC_DIR)/lib
 ISO_DIR	:=$(PROJECT_DIR)/iso
-#Size in bytes of the early boot heap
-EARLY_HEAP_SIZE	?=	4096
-DEBUG_ENABLE	?=	1
+OBJ_DIR:=$(PROJECT_DIR)/obj
+BIN_DIR:=$(PROJECT_DIR)/bin
+
+EARLY_HEAP_SIZE?=4096
+DEBUG_ENABLE?=0
+
 ifeq ($(DEBUG_ENABLE), 1)
-DEBUG	:=	-DDEBUG
+	DEBUG:=-DDEBUG
+	DEBUG_INFO:=-g
 else
-DEBUG	:=
+	DEBUG:=
+	DEBUG_INFO:=
 endif
-#Toolchain general flags
-CFLAGS	:=	-O3 -MD -I$(SOURCE_DIR)/include -I$(SOURCE_DIR)/include/arch/$(ARCH)
-CFLAGS	+=	-ffreestanding -Wall -Wextra -std=gnu11 -DARCH=$(ARCH) -DEARLY_HEAP_SIZE=$(EARLY_HEAP_SIZE) $(DEBUG)
-LDFLAGS	:=	-T $(ARCH_DIR)/linker.ld -nostdlib
-LIBS	:=	-lgcc
-#Qemu settings
-QEMU_MEM	:=	128M
-QEMU_ARCH	:=	i386
-#Objects to build
-OBJS	:=	\
-	$(ARCH_DIR)/halt/halt.o	\
-	$(ARCH_DIR)/bootmem/bootmem.o	\
-	$(ARCH_DIR)/pmm/pmm.o	\
-	$(ARCH_DIR)/vmm/flush_tlb_all.o	\
-	$(ARCH_DIR)/vmm/flush_tlb_single.o	\
-	$(ARCH_DIR)/boot/boot.o	\
-	$(ARCH_DIR)/gdt/gdt.o	\
-	$(ARCH_DIR)/gdt/load_gdt.o	\
-	$(ARCH_DIR)/vga/vga.o	\
-	$(LIB_DIR)/string/string.o	\
-	$(LIB_DIR)/bitmap/bitmap.o	\
-	kernel/init/kernel.o	\
-	kernel/printk/printk.o
 
-LINK_LIST	:=	\
-	$(OBJS)	\
-	$(LIBS)
+CFLAGS:=-O3 $(DEBUG_INFO) -MMD -MP -Iinclude -Iinclude/arch/$(ARCH)
+CFLAGS+=-ffreestanding -Wall -Wextra -std=gnu11 -DARCH=$(ARCH) -DEARLY_HEAP_SIZE=$(EARLY_HEAP_SIZE) $(DEBUG)
+LDFLAGS:=-T $(ARCH_DIR)/$(ARCH).ld -nostdlib
 
-#Include gcc dependency files generated with -MD CFLAGS option for header files dependency tracking
+LIBS:=-lgcc
+
+QEMU_MEM:=128M
+QEMU_ARCH:=i386
+
+CFILES:=$(shell find $(SRC_DIR)  -not \( -path $(ARCH_DIR) -prune \) -name '*.c')
+CFILES+=$(shell find $(ARCH_DIR) -not \( -path $(PLATFORM_DIR) -prune \) -name '*.c')
+CFILES+=$(shell find $(PLATFORM_DIR) -name '*.c')
+
+ASFILES:=$(shell find $(SRC_DIR) -not \( -path $(ARCH_DIR) -prune \) -name '*.S')
+ASFILES+=$(shell find $(ARCH_DIR) -not \( -path $(PLATFORM_DIR) -prune \) -name '*.S')
+ASFILES+=$(shell find $(PLATFORM_DIR) -name '*.S')
+
+OBJS:=$(patsubst %.c, $(OBJ_DIR)/%.o, $(notdir $(CFILES)))
+OBJS+=$(patsubst %.S, $(OBJ_DIR)/%.o, $(notdir $(ASFILES)))
+VPATH=$(sort $(dir $(CFILES)) $(dir $(ASFILES)))
+
+LINK_LIST:=\
+$(OBJS)\
+$(LIBS)
+
 -include $(OBJS:.o=.d)
 
-.DEFAULT_GOAL	:=	yauos
+.PHONY: all qemu qemu-gdb clean yauos iso
 
-.PHONY:	all qemu clean
+.DEFAULT_GOAL:=yauos
 
-yauos: $(OBJS) $(ARCH_DIR)/linker.ld
+yauos: $(BIN_DIR)/yauos
+
+iso: $(ISO_DIR)/yauos.iso
+
+$(BIN_DIR)/yauos: $(OBJS) $(ARCH_DIR)/$(ARCH).ld
+	@mkdir -p $(BIN_DIR)
 	$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(LINK_LIST)
-	grub-file --is-x86-multiboot2 yauos
+	@grub-file --is-x86-multiboot2 $(BIN_DIR)/yauos
 
-%.o : %.c
+$(OBJ_DIR)/%.o : %.c
+	@mkdir -p $(OBJ_DIR)
 	$(CC) -c $< -o $@ $(CFLAGS)
 
-%.o : %.s
+$(OBJ_DIR)/%.o : %.S
+	@mkdir -p $(OBJ_DIR)
 	$(CC) -c $< -o $@ $(CFLAGS)
 
-%.o : %.S
-	$(CC) -c $< -o $@ $(CFLAGS)
+$(ISO_DIR)/yauos.iso: $(BIN_DIR)/yauos
+	@mkdir -p $(ISO_DIR)
+	@mkdir -p $(PROJECT_DIR)/tmp
+	@mkdir -p $(PROJECT_DIR)/tmp/boot
+	@mkdir -p $(PROJECT_DIR)/tmp/boot/grub
+	@cp $(BIN_DIR)/yauos $(PROJECT_DIR)/tmp/boot
+	@echo > $(PROJECT_DIR)/tmp/boot/grub/grub.cfg 'menuentry "yauos" { multiboot2 /boot/yauos }'
+	@grub-mkrescue -o $(ISO_DIR)/yauos.iso $(PROJECT_DIR)/tmp
+	@rm -rf $(PROJECT_DIR)/tmp
 
-yauos.iso: yauos
-	mkdir -p $(PROJECT_DIR)/iso
-	mkdir -p $(ISO_DIR)/boot
-	mkdir -p $(ISO_DIR)/boot/grub
-	cp yauos $(ISO_DIR)/boot
-	@echo > $(ISO_DIR)/boot/grub/grub.cfg 'menuentry "yauos" { multiboot2 /boot/yauos }'
-	grub-mkrescue -o yauos.iso $(ISO_DIR)
+qemu: $(ISO_DIR)/yauos.iso
+	@qemu-system-$(QEMU_ARCH) -monitor stdio -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso
 
-qemu: yauos.iso
-	qemu-system-$(QEMU_ARCH) -monitor stdio -m $(QEMU_MEM) -cdrom yauos.iso
-
-qemu-gdb: yauos.iso
-	qemu-system-$(QEMU_ARCH) -monitor stdio -s -S -m $(QEMU_MEM) -cdrom yauos.iso
+qemu-gdb: $(ISO_DIR)/yauos.iso
+	@qemu-system-$(QEMU_ARCH) -monitor stdio -s -S -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso
 
 clean:
-	rm -f yauos
-	rm -f $(OBJS)
-	rm -f $(OBJS:.o=.d)
-	rm -f yauos.iso
-	rm -rf $(ISO_DIR)
+	@rm -rf $(BIN_DIR)/*
+	@rm -rf $(OBJ_DIR)/*
+	@rm -rf $(ISO_DIR)/*

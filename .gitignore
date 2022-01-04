@@ -1,5 +1,10 @@
 *.d
 *.o
+bin/
+obj/
 iso/
+downloads/
+tmp/
+toolchain/
 yauos.iso
 yauos
