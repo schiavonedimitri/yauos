@@ -51,5 +51,5 @@ clean-build:
 	@rm -rf $(GCC_BUILD_DIR)/*
 
 clean-all:
-	rm -rf $(TOOLCHAIN_DIR)
-	rm -rf $(DOWNLOAD_DIR)
+	@rm -rf $(TOOLCHAIN_DIR)
+	@rm -rf $(DOWNLOAD_DIR)

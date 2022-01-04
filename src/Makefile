@@ -38,8 +38,7 @@ LDFLAGS:=-T $(ARCH_DIR)/$(ARCH).ld -nostdlib
 
 LIBS:=-lgcc
 
-QEMU_MEM:=128M
-QEMU_ARCH:=i386
+QEMU_MEM?=128M
 
 CFILES:=$(shell find $(SRC_DIR)  -not \( -path $(ARCH_DIR) -prune \) -name '*.c')
 CFILES+=$(shell find $(ARCH_DIR) -not \( -path $(PLATFORM_DIR) -prune \) -name '*.c')
@@ -91,10 +90,10 @@ $(ISO_DIR)/yauos.iso: $(BIN_DIR)/yauos
 	@rm -rf $(PROJECT_DIR)/tmp
 
 qemu: $(ISO_DIR)/yauos.iso
-	@qemu-system-$(QEMU_ARCH) -monitor stdio -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso
+	@qemu-system-$(ARCH) -monitor stdio -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso
 
 qemu-gdb: $(ISO_DIR)/yauos.iso
-	@qemu-system-$(QEMU_ARCH) -monitor stdio -s -S -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso
+	@qemu-system-$(ARCH) -monitor stdio -s -S -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso
 
 clean:
 	@rm -rf $(BIN_DIR)/*
