@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-void *bmalloc(size_t bytes);
-void bfree(void *ptr);
+void *bmalloc(size_t);
+void bfree(void*);
 
 #endif /** BOOTMEM_H */

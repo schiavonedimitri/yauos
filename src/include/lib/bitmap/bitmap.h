@@ -3,9 +3,9 @@
 
 #include <stddef.h>
 
-void bitmap_set(void *bitmap, int bit);
-void bitmap_unset(void *bitmap, int bit);
-int bitmap_test(void *bitmap, int bit);
-int bitmap_first_unset(void *bitmap, size_t size);
+void bitmap_set(void*, int);
+void bitmap_unset(void*, int);
+int bitmap_test(void*, int);
+int bitmap_first_unset(void*, size_t);
 
 #endif /** BITMAP_H */

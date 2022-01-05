@@ -16,6 +16,9 @@ PROJECT_DIR:=$(realpath ..)
 SRC_DIR:=$(PROJECT_DIR)/src
 ARCH_DIR:=$(SRC_DIR)/arch/$(ARCH)
 PLATFORM_DIR:=$(SRC_DIR)/arch/$(ARCH)/platform/$(PLATFORM)
+INCLUDE_DIR:=$(SRC_DIR)/include
+INCLUDE_ARCH_DIR:=$(INCLUDE_DIR)/arch/$(ARCH)
+INCLUDE_PLATFORM_DIR:=$(INCLUDE_ARCH_DIR)/platform/$(PLATFORM)
 LIB_DIR=$(SRC_DIR)/lib
 ISO_DIR	:=$(PROJECT_DIR)/iso
 OBJ_DIR:=$(PROJECT_DIR)/obj
@@ -32,7 +35,7 @@ else
 	DEBUG_INFO:=
 endif
 
-CFLAGS:=-O3 $(DEBUG_INFO) -MMD -MP -Iinclude -Iinclude/arch/$(ARCH)
+CFLAGS:=-O3 $(DEBUG_INFO) -MMD -MP -I$(INCLUDE_DIR) -I$(INCLUDE_ARCH_DIR) -I$(INCLUDE_PLATFORM_DIR)
 CFLAGS+=-ffreestanding -Wall -Wextra -std=gnu11 -DARCH=$(ARCH) -DEARLY_HEAP_SIZE=$(EARLY_HEAP_SIZE) $(DEBUG)
 LDFLAGS:=-T $(ARCH_DIR)/$(ARCH).ld -nostdlib
 
@@ -40,12 +43,12 @@ LIBS:=-lgcc
 
 QEMU_MEM?=128M
 
-CFILES:=$(shell find $(SRC_DIR)  -not \( -path $(ARCH_DIR) -prune \) -name '*.c')
-CFILES+=$(shell find $(ARCH_DIR) -not \( -path $(PLATFORM_DIR) -prune \) -name '*.c')
+CFILES:=$(shell find $(SRC_DIR)  -not \( -path $(SRC_DIR)/arch -prune \) -name '*.c')
+CFILES+=$(shell find $(ARCH_DIR) -not \( -path $(ARCH_DIR)/platform -prune \) -name '*.c')
 CFILES+=$(shell find $(PLATFORM_DIR) -name '*.c')
 
-ASFILES:=$(shell find $(SRC_DIR) -not \( -path $(ARCH_DIR) -prune \) -name '*.S')
-ASFILES+=$(shell find $(ARCH_DIR) -not \( -path $(PLATFORM_DIR) -prune \) -name '*.S')
+ASFILES:=$(shell find $(SRC_DIR) -not \( -path $(SRC_DIR)/arch -prune \) -name '*.S')
+ASFILES+=$(shell find $(ARCH_DIR) -not \( -path $(ARCH_DIR)/platform -prune \) -name '*.S')
 ASFILES+=$(shell find $(PLATFORM_DIR) -name '*.S')
 
 OBJS:=$(patsubst %.c, $(OBJ_DIR)/%.o, $(notdir $(CFILES)))
