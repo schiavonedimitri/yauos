@@ -7,8 +7,6 @@
 #include <arch/vga.h>
 #include <kernel/printk.h>
 
-extern void prova();
-
 void kernel_main(uint32_t magic, multiboot2_information_header_t *multiboot2_info) {
 	vga_initialize();
 	if (magic != MULTIBOOT2_MAGIC) {
@@ -18,5 +16,4 @@ void kernel_main(uint32_t magic, multiboot2_information_header_t *multiboot2_inf
 	gdt_init();
 	pmm_init(multiboot2_info);
 	printk("Initialization done.\n");
-	prova();
 }
