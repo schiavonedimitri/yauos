@@ -98,15 +98,15 @@ $(ISO_DIR)/yauos.iso: $(BIN_DIR)/yauos
 	@mkdir -p $(PROJECT_DIR)/tmp/boot
 	@mkdir -p $(PROJECT_DIR)/tmp/boot/grub
 	@cp $(BIN_DIR)/yauos $(PROJECT_DIR)/tmp/boot
-	@echo > $(PROJECT_DIR)/tmp/boot/grub/grub.cfg 'menuentry "yauos" { multiboot2 /boot/yauos bootconsole=vga }'
+	@echo > $(PROJECT_DIR)/tmp/boot/grub/grub.cfg 'menuentry "yauos" { multiboot2 /boot/yauos bootconsole=serial }'
 	@grub-mkrescue -o $(ISO_DIR)/yauos.iso $(PROJECT_DIR)/tmp
 	@rm -rf $(PROJECT_DIR)/tmp
 
 qemu: $(ISO_DIR)/yauos.iso
-	@qemu-system-$(ARCH) -monitor stdio -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso
+	@qemu-system-$(ARCH) -monitor stdio -serial file:yauos.txt -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso
 
 qemu-gdb: $(ISO_DIR)/yauos.iso
-	@qemu-system-$(ARCH) -monitor stdio -s -S -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso
+	@qemu-system-$(ARCH) -monitor stdio -serial file:yauos.txt -s -S -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso
 
 clean:
 	@rm -rf $(BIN_DIR)/*

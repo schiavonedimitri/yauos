@@ -81,7 +81,10 @@ void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	for (size_t i = 0; i < boot_info->karg_entries; i++) {
 		if (strcmp(boot_info->karg_entry[i].key, "bootconsole") == 0) {
 			if (strcmp(boot_info->karg_entry[i].value, "serial") == 0) {
-				//TODO: implement bootconsole serial
+				/* TODO: Currently serial bootconsole initialization code has no way of printing output (in case of failure) and so there's some lost output between bootconsole switching.
+				 * For now the serial bootconsole initialization code hangs the system on failure. In the future a ring buffer could be added to avoid losing output and a way to fallback
+				 * to vga bootconsole again should be added.
+				 */
 				bootconsole_init(BOOTCONSOLE_SERIAL);
 			}
 		}
