@@ -5,7 +5,7 @@
 #include <arch/types.h>
 
 /*
- * Used by morecore() to request memory chunks. By default it requests 1024Kb chunks per call.
+ * Used by morecore() to request memory chunks. By default it requests 1Kb chunks per call.
  * Shouldn't be higher than EARLY_HEAP_SIZE / sizeof(Header) or allocations will fail due to the pool being limited to EARLY_HEAP_SIZE bytes.
  */
 

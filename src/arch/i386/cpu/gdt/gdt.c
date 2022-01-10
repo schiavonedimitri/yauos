@@ -1,4 +1,4 @@
-#include "gdt.h"
+#include <arch/cpu/gdt.h>
 
 extern void load_gdt(gdt_descriptor_t*);
 gdt_descriptor_t gdt_descriptor;

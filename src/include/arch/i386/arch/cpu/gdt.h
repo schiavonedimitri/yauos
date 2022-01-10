@@ -1,5 +1,5 @@
-#ifndef _GDT_H
-#define _GDT_H
+#ifndef GDT_H
+#define GDT_H
 
 #include <stdint.h>
 
@@ -104,4 +104,4 @@ typedef struct gdt_descriptor {
 #define SEGMENT_KCODE(base, limit) (SEGMENT(base, limit, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1))
 #define SEGMENT_KDATA(base, limit) (SEGMENT(base, limit, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1))
 
-#endif /** _GDT_H */
+#endif /** GDT_H */

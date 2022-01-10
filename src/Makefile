@@ -24,6 +24,7 @@ ISO_DIR	:=$(PROJECT_DIR)/iso
 OBJ_DIR:=$(PROJECT_DIR)/obj
 BIN_DIR:=$(PROJECT_DIR)/bin
 
+BOOTCONSOLE?=VGA
 EARLY_HEAP_SIZE?=4096
 DEBUG_ENABLE?=0
 
@@ -35,8 +36,16 @@ else
 	DEBUG_INFO:=
 endif
 
+ifeq ($(ARCH), i386)
+	ARCH_BITS:=32
+endif
+
+ifeq ($(ARCH), x64)
+	ARCH_BITS=64
+endif
+
 CFLAGS:=-O3 $(DEBUG_INFO) -MMD -MP -I$(INCLUDE_DIR) -I$(INCLUDE_ARCH_DIR) -I$(INCLUDE_PLATFORM_DIR)
-CFLAGS+=-ffreestanding -Wall -Wextra -std=gnu11 -DARCH=$(ARCH) -DEARLY_HEAP_SIZE=$(EARLY_HEAP_SIZE) $(DEBUG)
+CFLAGS+=-ffreestanding -Wall -Wextra -std=gnu11 -DARCH=$(ARCH) -DARCH_BITS=$(ARCH_BITS) -DEARLY_HEAP_SIZE=$(EARLY_HEAP_SIZE) -DBOOTCONSOLE=$(BOOTCONSOLE) $(DEBUG)
 LDFLAGS:=-T $(ARCH_DIR)/$(ARCH).ld -nostdlib
 
 LIBS:=-lgcc
@@ -53,6 +62,7 @@ ASFILES+=$(shell find $(PLATFORM_DIR) -name '*.S')
 
 OBJS:=$(patsubst %.c, $(OBJ_DIR)/%.o, $(notdir $(CFILES)))
 OBJS+=$(patsubst %.S, $(OBJ_DIR)/%.o, $(notdir $(ASFILES)))
+
 VPATH=$(sort $(dir $(CFILES)) $(dir $(ASFILES)))
 
 LINK_LIST:=\
@@ -88,7 +98,7 @@ $(ISO_DIR)/yauos.iso: $(BIN_DIR)/yauos
 	@mkdir -p $(PROJECT_DIR)/tmp/boot
 	@mkdir -p $(PROJECT_DIR)/tmp/boot/grub
 	@cp $(BIN_DIR)/yauos $(PROJECT_DIR)/tmp/boot
-	@echo > $(PROJECT_DIR)/tmp/boot/grub/grub.cfg 'menuentry "yauos" { multiboot2 /boot/yauos }'
+	@echo > $(PROJECT_DIR)/tmp/boot/grub/grub.cfg 'menuentry "yauos" { multiboot2 /boot/yauos bootconsole=vga }'
 	@grub-mkrescue -o $(ISO_DIR)/yauos.iso $(PROJECT_DIR)/tmp
 	@rm -rf $(PROJECT_DIR)/tmp
 

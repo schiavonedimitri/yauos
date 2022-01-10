@@ -1,5 +1,5 @@
-#ifndef _VGA_H
-#define _VGA_H
+#ifndef VGA_TEXT_MODE_H
+#define VGA_TEXT_MODE_H
 
 #include <stdint.h>
 
@@ -30,4 +30,4 @@ static inline uint16_t vga_entry(unsigned char uc, uint8_t color) {
 	return (uint16_t) (uc) | (((uint16_t) (color)) << 8);
 }
 
-#endif /** _VGA_H */
+#endif /** VGA_TEXT_MODE_H */

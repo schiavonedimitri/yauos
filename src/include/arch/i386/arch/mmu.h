@@ -16,6 +16,7 @@
 #define PHYSICAL_TO_VIRTUAL(address) (address + (KERNEL_VIRTUAL_BASE - KERNEL_PHYSICAL_BASE))
 
 #else
+
 #include <stdint.h>
 #include <arch/types.h>
 

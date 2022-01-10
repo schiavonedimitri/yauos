@@ -1,8 +1,9 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdalign.h>
-#include <arch/defs.h>
+#include <arch/align.h>
 #include <arch/types.h>
+#include <lib/string/string.h>
 #include "bootmem.h"
 
 /*
@@ -10,8 +11,8 @@
  * Programming without dynamic memory is always more convoluted and the rationale for this is the following:
  * No assumptions can be made about memory (not even memory past the end of the kernel) during boot before inspecting
  * a memory map provided by firmware or by a predecessor in the boot chain.
- * Due to this the allocator draws from a pool of EARLY_HEAP_SIZE reserved in the kernel .bss section which is
- * guarenteed instead (because this is an elf kernel, if not enough memory was available for the loader it wouldn't have loaded us).
+ * Due to this, the allocator draws from a pool of EARLY_HEAP_SIZE reserved in the kernel .bss section which, instead, is guarenteed.
+ * (Because this is an elf kernel, if not enough memory was available for the loader it wouldn't have loaded us).
  * This is mostly used during early stage in the initialization process, before the memory manager is up and running and for aiding at bootstrapping
  * the memory manager itself. A simple watermark allocator could've been used since this memory will be eventually recycled by the real memory manager.
  * Nevertheless the convenience of having a free and since the allocator manages such a small memory pool should add little to no overhead for great added functionality.
@@ -75,6 +76,10 @@ static Header* morecore(size_t n_units) {
 	return freep;
 }
 
+/*
+ * Memory allocated is zeroed before being returned to the user.
+ */
+
 void* bmalloc(size_t n_bytes) {
 	Header *p, *prevp;
 	size_t n_units;
@@ -94,6 +99,7 @@ void* bmalloc(size_t n_bytes) {
 				p->s.size = n_units;
 			}
 			freep = prevp;
+			memset((p + 1), 0, n_bytes);
 			return (void*) (p + 1);
 		}
 		if (p == freep) {
