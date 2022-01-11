@@ -1,3 +1,5 @@
+#include <stddef.h>
+#include <stdint.h>
 #include <arch/align.h>
 #include <arch/bootmem/bootmem.h>
 #include <arch/bootconsole/bootconsole.h>
@@ -8,14 +10,18 @@
 #include <lib/string/string.h>
 #include <platform/multiboot2/multiboot2.h>
 
+extern void gdt_init();
+
 /*
- * This is the kernel architecture specific entry point after the early boot code. This reads in the architecture specific boot information and initializes the early boot console and
- * passes this information to the higher level kernel entry point.
+ * This is the kernel architecture specific entry point after the early boot code.
+ * Here the first steps of initialization are done: architecture specific initialization (GDT, IDT, etc...), reading the memory map and formatting it in the kernel expected way,
+ * initialization of the early boot console, etc...
  */
 
 extern void kmain(bootinfo_t*);
 
 void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
+	gdt_init();
 	bootconsole_init(BOOTCONSOLE_VGA);
 	bootinfo_t *boot_info = (bootinfo_t*) bmalloc(sizeof(bootinfo_t));
 	if (!boot_info) {
@@ -81,9 +87,9 @@ void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	for (size_t i = 0; i < boot_info->karg_entries; i++) {
 		if (strcmp(boot_info->karg_entry[i].key, "bootconsole") == 0) {
 			if (strcmp(boot_info->karg_entry[i].value, "serial") == 0) {
-				/* TODO: Currently serial bootconsole initialization code has no way of printing output (in case of failure) and so there's some lost output between bootconsole switching.
+				/* TODO: Currently serial bootconsole initialization code has no way of printing output (in case of failure) and so there's some lost output between bootconsoles switching.
 				 * For now the serial bootconsole initialization code hangs the system on failure. In the future a ring buffer could be added to avoid losing output and a way to fallback
-				 * to vga bootconsole again should be added.
+				 * to vga bootconsole again and print any buffered output should be added.
 				 */
 				bootconsole_init(BOOTCONSOLE_SERIAL);
 			}
@@ -111,6 +117,7 @@ void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 			entry = (multiboot2_tag_memory_map_entry_t*) memory_map->entries;
 			for (size_t i = 0; i < number_entries; i++) {
 				if(entry->type == MULTIBOOT2_MEMORY_AVAILABLE || entry->type == MULTIBOOT2_MEMORY_ACPI_RECLAIMABLE){
+					boot_info->memory_size += entry->length;
 					memory->base_addr = entry->base_addr;
 					memory->length = entry->length;
 					memory++;

@@ -103,10 +103,10 @@ $(ISO_DIR)/yauos.iso: $(BIN_DIR)/yauos
 	@rm -rf $(PROJECT_DIR)/tmp
 
 qemu: $(ISO_DIR)/yauos.iso
-	@qemu-system-$(ARCH) -monitor stdio -serial file:yauos.txt -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso
+	@qemu-system-$(ARCH) -serial mon:stdio -nographic -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso
 
 qemu-gdb: $(ISO_DIR)/yauos.iso
-	@qemu-system-$(ARCH) -monitor stdio -serial file:yauos.txt -s -S -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso
+	@qemu-system-$(ARCH) -serial mon:stdio -nographic -s -S -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso
 
 clean:
 	@rm -rf $(BIN_DIR)/*

@@ -10,9 +10,8 @@
 #include <lib/string/string.h>
 #include "pmm.h"
 
-static void *k_start = (void*) VIRTUAL_TO_PHYSICAL(&_KERNEL_START_);
-static void *k_end = (void*) VIRTUAL_TO_PHYSICAL(&_KERNEL_END_);
-static size_t memory_size = 0;
+static phys_addr_t k_start = VIRTUAL_TO_PHYSICAL(&_KERNEL_START_);
+static phys_addr_t k_end = VIRTUAL_TO_PHYSICAL(&_KERNEL_END_);
 static unsigned long *pmm_bitmap = (unsigned long*) -1;
 static size_t pmm_size = 0;
 static size_t pmm_total_blocks = 0;
@@ -39,30 +38,31 @@ static void reserve_region(phys_addr_t start_addr, size_t size) {
 }
 
 void pmm_init(bootinfo_t *boot_info) {
-	for (size_t i = 0; i < boot_info->memory_map_entries; i++) {
-		memory_size += boot_info->memory_map_entry[i].length;
-	}
-	pmm_total_blocks = memory_size / BLOCK_SIZE;
+	pmm_total_blocks = boot_info->memory_size / BLOCK_SIZE;
 	pmm_size = pmm_total_blocks / 8;
 	void *ptr = (void*) -1;
 	if (pmm_total_blocks % 8) {
 		pmm_size++;
 	}
+	//TODO: currently the physical memory manager doesn't take into account the memory map holes and this leads to allocate memory locations which might not exist or be reserved!
 	for (size_t i = 0; i < boot_info->memory_map_entries; i++) {
-		ptr = (phys_addr_t*) -1;
+		ptr = (void*) -1;
 		if(boot_info->memory_map_entry[i].length >= pmm_size) {
 			if (boot_info->memory_map_entry[i].base_addr != (phys_addr_t) k_start) {
-				if ((ptr = (void*) (phys_addr_t) boot_info->memory_map_entry[i].base_addr + pmm_size - 1) < k_start) {
+				if ((phys_addr_t) (boot_info->memory_map_entry[i].base_addr + pmm_size - 1) < k_start) {
+					ptr = (void*) (phys_addr_t) boot_info->memory_map_entry[i].base_addr;
 					break;
 				}
 				else {
-					if ((ptr = (void*) (phys_addr_t) k_end + pmm_size - 1) <= (void*) (phys_addr_t) (boot_info->memory_map_entry[i].base_addr + boot_info->memory_map_entry[i].length - 1)) {
+					if (((phys_addr_t) k_end + pmm_size - 1) <= (phys_addr_t) (boot_info->memory_map_entry[i].base_addr + boot_info->memory_map_entry[i].length - 1)) {
+						ptr = (void*) k_end;
 						break;
 					}
 				}
 			}
 			else {
-				if ((ptr = (void*) (phys_addr_t) k_end + pmm_size - 1) <= (void*) (phys_addr_t) (boot_info->memory_map_entry[i].base_addr + boot_info->memory_map_entry[i].length - 1)) {
+				if (((phys_addr_t) k_end + pmm_size - 1) <= (phys_addr_t) (boot_info->memory_map_entry[i].base_addr + boot_info->memory_map_entry[i].length - 1)) {
+					ptr = (void*) k_end;
 					break;
 				}
 			}
@@ -74,9 +74,9 @@ void pmm_init(bootinfo_t *boot_info) {
 	}
 	pmm_bitmap = (uintptr_t*) PHYSICAL_TO_VIRTUAL(ptr);
 	memset(pmm_bitmap, 0x0, pmm_size);
-	reserve_region((phys_addr_t) k_start, (phys_addr_t) k_end - (phys_addr_t) k_start);
-	reserve_region((phys_addr_t) VIRTUAL_TO_PHYSICAL(pmm_bitmap), pmm_size);
-	printk("PMM: Initialized physical memory:\nBlock size: %d bytes\nTotal blocks: %d\nFree blocks: %d\nReserved blocks: %d\nUsed blocks: %d\nTotal available memory: %d bytes\nTotal memory: %d bytes\n", BLOCK_SIZE, pmm_total_blocks, pmm_total_blocks - pmm_used_blocks, pmm_reserved_blocks, pmm_used_blocks, (pmm_total_blocks - pmm_used_blocks) * BLOCK_SIZE, memory_size);
+	reserve_region(k_start, k_end - k_start);
+	reserve_region(VIRTUAL_TO_PHYSICAL(pmm_bitmap), pmm_size);
+	printk("PMM: Initialized physical memory:\nBlock size: %d bytes\nTotal blocks: %d\nFree blocks: %d\nReserved blocks: %d\nUsed blocks: %d\nTotal available memory: %d bytes\nTotal memory: %d bytes\n", BLOCK_SIZE, pmm_total_blocks, pmm_total_blocks - pmm_used_blocks, pmm_reserved_blocks, pmm_used_blocks, (pmm_total_blocks - pmm_used_blocks) * BLOCK_SIZE, boot_info->memory_size);
 }
 
 phys_addr_t pmm_get_free_frame() {

@@ -26,6 +26,7 @@ typedef struct bootinfo {
 	karg_t *karg_entry;
 	size_t memory_map_entries;
 	memory_entry_t *memory_map_entry;
+	size_t memory_size;
 } bootinfo_t;
 
 #endif /** BOOTINFO_H */

@@ -6,4 +6,5 @@ Reserved blocks: 10
 Used blocks: 10
 Total available memory: 133648384 bytes
 Total memory: 133692416 bytes
-Init done
+Init done.
+PMM: got free frame at: 0x1000
