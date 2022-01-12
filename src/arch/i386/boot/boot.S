@@ -77,7 +77,7 @@
 .extern _KERNEL_DATA_START_
 .extern _KERNEL_DATA_END_
 .extern _KERNEL_BSS_START_
-.extern _KERNEL_BSS_END_
+.extern _KERNEL_END_
 
 .section .text
 
@@ -86,11 +86,14 @@
 	.type _start, @function
 
 	_start:
-		#zero the general purpose registers but eax and ebx because they contain data left by the bootloader.
+		# Zero the general purpose registers but eax and ebx because they contain data left by the bootloader.
 		xorl %edx, %edx
 		movl %edx, %ecx
 		movl %edx, %esi
 		movl %edx, %edi
+		# Setup our stack for use here.
+		movl $VIRTUAL_TO_PHYSICAL(stack_top), %esp
+		movl %esp, %ebp
 		# Setup the first page table of the kernel to map the first 2Mb physical memory starting at physical location 0x00000000.
 		# VIRTUAL_TO_PHYSICAL is needed because the kernel is linked at 0xC0100000 but is actually loaded at 0x100000, see the linker script.
 		# Manual address fixing is needed because all addresses are virtual but paging is still disabled and we need to work with physical addresses until then.
@@ -98,6 +101,7 @@
 		movl $VIRTUAL_TO_PHYSICAL(boot_page_table), %edi
 		movl $VIRTUAL_TO_PHYSICAL(_KERNEL_TEXT_START_), %ecx
 		movl $0, %esi
+		# 1) Map from 0x0 to _KERNEL_TEXT_START_ R/W.
 	1:
 		movl %esi, %edx
 		orl $0x3, %edx
@@ -107,7 +111,8 @@
 		cmpl %ecx, %esi
 		jne 1b
 		movl $VIRTUAL_TO_PHYSICAL(_KERNEL_DATA_START_), %ecx
-	1:
+		# 2) Map from _KERNEL_TEXT_START_ to _KERNEL_DATA_START_ R.
+		1:
 		movl %esi, %edx
 		orl $0x1, %edx
 		movl %edx, (%edi)
@@ -115,15 +120,7 @@
 		addl $4, %edi
 		cmpl %ecx, %esi
 		jne 1b
-		movl $VIRTUAL_TO_PHYSICAL(_KERNEL_BSS_END_), %ecx
-	1:
-		movl %esi, %edx
-		orl $0x3, %edx
-		movl %edx, (%edi)
-		addl $4096, %esi
-		addl $4, %edi
-		cmpl %ecx, %esi
-		jne 1b
+		# Calculate how many pages have been mapped of the 512 we wanted to map.
 		pushl %edi
 		subl $VIRTUAL_TO_PHYSICAL(boot_page_table), %edi
 		shr $2, %edi
@@ -131,6 +128,7 @@
 		subl %edi, %edx
 		movl %edx, %ecx
 		popl %edi
+		# Map the remaining pages of the 512 we wanted to map substracted by those already mapped above as R/W.
 	1:
 		movl %esi, %edx
 		orl $0x3, %edx
@@ -164,7 +162,7 @@
 		# This is needed to force a TLB flush, otherwise the old identity mapping could persist indefinitely (As per Intel manual).
 		movl %cr3, %ecx
 		movl %ecx, %cr3
-		# Set initial stack frame and call kernel c code entry point.
+		# Set initial stack frame again (since paging is active now) and call kernel's architecture main entry point.
 		movl $stack_top, %esp
 		movl %esp, %ebp
 		# The multiboot2 structure was still using the old physical address, fix it.
