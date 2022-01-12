@@ -6,7 +6,6 @@
 #include <stdint.h>
 
 typedef enum bootconsole_type {
-	BOOTCONSOLE_MEM = 0,
 	BOOTCONSOLE_VGA = 1,
 	BOOTCONSOLE_SERIAL = 2,
 } bootconsole_type_t;

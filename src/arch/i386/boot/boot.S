@@ -70,6 +70,15 @@
 		.skip 4096
 	stack_top:
 
+.extern _KERNEL_TEXT_START_
+.extern _KERNEL_TEXT_END_
+.extern _KERNEL_RODATA_START_
+.extern _KERNEL_RODATA_END_
+.extern _KERNEL_DATA_START_
+.extern _KERNEL_DATA_END_
+.extern _KERNEL_BSS_START_
+.extern _KERNEL_BSS_END_
+
 .section .text
 
 	# Main entry point in the elf object.
@@ -85,25 +94,57 @@
 		# Setup the first page table of the kernel to map the first 2Mb physical memory starting at physical location 0x00000000.
 		# VIRTUAL_TO_PHYSICAL is needed because the kernel is linked at 0xC0100000 but is actually loaded at 0x100000, see the linker script.
 		# Manual address fixing is needed because all addresses are virtual but paging is still disabled and we need to work with physical addresses until then.
-		# Also note that here pages are mapped read/write for all the kernel, in a later initialization stage these pages will be remapped with the correct permissions
-		# according to the elf sections of the kernel image and according to memory map important parts (like bios, vga etc..).
+		# Kernel .text and .rodata sections are mapped read only, while .data and .bss are mapped read/write according to elf.
 		movl $VIRTUAL_TO_PHYSICAL(boot_page_table), %edi
+		movl $VIRTUAL_TO_PHYSICAL(_KERNEL_TEXT_START_), %ecx
 		movl $0, %esi
-		movl $512, %ecx
-	_loop:
+	1:
 		movl %esi, %edx
-		orl $3, %edx
+		orl $0x3, %edx
 		movl %edx, (%edi)
 		addl $4096, %esi
 		addl $4, %edi
-		loop _loop
+		cmpl %ecx, %esi
+		jne 1b
+		movl $VIRTUAL_TO_PHYSICAL(_KERNEL_DATA_START_), %ecx
+	1:
+		movl %esi, %edx
+		orl $0x1, %edx
+		movl %edx, (%edi)
+		addl $4096, %esi
+		addl $4, %edi
+		cmpl %ecx, %esi
+		jne 1b
+		movl $VIRTUAL_TO_PHYSICAL(_KERNEL_BSS_END_), %ecx
+	1:
+		movl %esi, %edx
+		orl $0x3, %edx
+		movl %edx, (%edi)
+		addl $4096, %esi
+		addl $4, %edi
+		cmpl %ecx, %esi
+		jne 1b
+		pushl %edi
+		subl $VIRTUAL_TO_PHYSICAL(boot_page_table), %edi
+		shr $2, %edi
+		movl $512, %edx
+		subl %edi, %edx
+		movl %edx, %ecx
+		popl %edi
+	1:
+		movl %esi, %edx
+		orl $0x3, %edx
+		movl %edx, (%edi)
+		addl $4096, %esi
+		addl $4, %edi
+		loop 1b
 		# The first directory entry is needed for identity mapping physical addresses to virtual addresses.
 		# This is needed in order to avoid a triple fault on the instruction that jumps to the virtual addresses after enabling paging (which is still in lower addresses).
-		movl $(VIRTUAL_TO_PHYSICAL(boot_page_table) + 0x003), VIRTUAL_TO_PHYSICAL(kernel_directory)
+		movl $(VIRTUAL_TO_PHYSICAL(boot_page_table) + 0x3), VIRTUAL_TO_PHYSICAL(kernel_directory)
 		# Actual directory that performs the required mapping to 0xC0000000.
-		movl $(VIRTUAL_TO_PHYSICAL(boot_page_table) + 0x003), VIRTUAL_TO_PHYSICAL(kernel_directory) + 768 * 4
+		movl $(VIRTUAL_TO_PHYSICAL(boot_page_table) + 0x3), VIRTUAL_TO_PHYSICAL(kernel_directory) + 768 * 4
 		# Recurive directory entry.
-		movl $(VIRTUAL_TO_PHYSICAL(kernel_directory) + 0x003), VIRTUAL_TO_PHYSICAL(kernel_directory) + 1023 * 4
+		movl $(VIRTUAL_TO_PHYSICAL(kernel_directory) + 0x3), VIRTUAL_TO_PHYSICAL(kernel_directory) + 1023 * 4
 		movl $(VIRTUAL_TO_PHYSICAL(kernel_directory)), %ecx
 		# Pointing cr3 to the kernel directory just created.
 		movl %ecx, %cr3
