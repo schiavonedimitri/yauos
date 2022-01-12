@@ -1,8 +1,8 @@
 #include <arch/mmu.h>
 # Please note that this project uses the AT&T assembly syntax.
+
 # defining a separate section for the multiboot2 header because it needs to be linked first in order for a multiboot2 compliant bootloader to boot us. See the linker script.
 .section .multiboot2
-
 	header_start:
 		# Multiboot2 magic
 		.long 0xE85250D6
@@ -22,7 +22,7 @@
 		.long 8
 	header_end:
 
-# The Multiboot2 spec states that the machine state after loading the kernel is as follows:
+	# The Multiboot2 spec states that the machine state after loading the kernel is as follows:
 # 'EAX': Must contain the magic value  ‘0x36d76289’. The presence of this value indicates to the operating system that it was loaded by a Multiboot2 compliant boot loader.
 # 'EBX': Must contain the 32 bit physical address of the Multiboot2 information structure provided by the boot loader.
 # 'CS':  Must be a 32 bit read/execute code segment with an offset of '0' and a limit of '0xFFFFFFFF'. The exact value is undefined.
@@ -35,16 +35,15 @@
 # 'GDTR': Even though the segment registers are set up as described above, the ‘GDTR’ may be invalid, so the OS image must not load any segment registers (even just reloading the same values!) until it sets up its own ‘GDT’.
 # 'IDTR': The OS image must leave interrupts disabled until it sets up its own IDT.
 
-
 # Make the global directory and initial page table public symbols for the kernel to reuse these memory in later stages.
 .global kernel_directory
 .type kernel_directory, @object
 
 .global bootmem_start
-#.type bootmem_start, @object
+.type bootmem_start, @object
 
 .global bootmem_end
-#.type bootmem_end, @object
+.type bootmem_end, @object
 
 .global boot_page_table
 .type boot_page_table, @object
@@ -74,28 +73,25 @@
 .extern _KERNEL_DATA_START_
 
 .section .text
-
 	# Main entry point in the elf object.
 	.global _start
 	.type _start, @function
-
 	_start:
 		# Zero the general purpose registers but eax and ebx because they contain data left by the bootloader.
 		xorl %edx, %edx
 		movl %edx, %ecx
 		movl %edx, %esi
 		movl %edx, %edi
-		# Setup our stack for use here.
+		# Setup stack pointer for use in this code.
 		movl $VIRTUAL_TO_PHYSICAL(stack_top), %esp
-		movl %esp, %ebp
 		# Setup the first page table of the kernel to map the first 2Mb physical memory starting at physical location 0x00000000.
 		# VIRTUAL_TO_PHYSICAL is needed because the kernel is linked at 0xC0100000 but is actually loaded at 0x100000, see the linker script.
 		# Manual address fixing is needed because all addresses are virtual but paging is still disabled and we need to work with physical addresses until then.
 		# Kernel .text and .rodata sections are mapped read only, while .data and .bss are mapped read/write according to elf.
+		# 1) Map from 0x0 to _KERNEL_TEXT_START_ R/W.
 		movl $VIRTUAL_TO_PHYSICAL(boot_page_table), %edi
 		movl $VIRTUAL_TO_PHYSICAL(_KERNEL_TEXT_START_), %ecx
 		movl $0, %esi
-		# 1) Map from 0x0 to _KERNEL_TEXT_START_ R/W.
 	1:
 		movl %esi, %edx
 		orl $0x3, %edx
@@ -104,9 +100,9 @@
 		addl $4, %edi
 		cmpl %ecx, %esi
 		jne 1b
-		movl $VIRTUAL_TO_PHYSICAL(_KERNEL_DATA_START_), %ecx
 		# 2) Map from _KERNEL_TEXT_START_ to _KERNEL_DATA_START_ R.
-		1:
+		movl $VIRTUAL_TO_PHYSICAL(_KERNEL_DATA_START_), %ecx
+	1:
 		movl %esi, %edx
 		orl $0x1, %edx
 		movl %edx, (%edi)
@@ -122,7 +118,8 @@
 		subl %edi, %edx
 		movl %edx, %ecx
 		popl %edi
-		# Map the remaining pages of the 512 we wanted to map substracted by those already mapped above as R/W.
+		# 3) Map the remaining pages of the 512 we wanted to map substracted by those already mapped above R/W. This includes the kernel .bss and more pages up to 2Mb so that
+		# we don't miss to map the multiboot2 structure and have enough memory mapped for initialization.
 	1:
 		movl %esi, %edx
 		orl $0x3, %edx
@@ -146,17 +143,16 @@
 		# that is, to protect kernel code pages and read only data pages from being modified even by the kernel itself (unless the page tables are modified).
 		orl $0x80010001, %ecx
 		movl %ecx, %cr0
-		leal higher_half, %ecx
+		leal 1f, %ecx
 		# Go to virtual addresses by using an indirect jump because no gdt has been setup yet.
 		jmpl *%ecx
-
-	higher_half:
+	1:
 		# Remove identity map because it isn't needed anymore.
 		movl $0, kernel_directory
 		# This is needed to force a TLB flush, otherwise the old identity mapping could persist indefinitely (As per Intel manual).
 		movl %cr3, %ecx
 		movl %ecx, %cr3
-		# Set initial stack frame again (since paging is active now) and call kernel's architecture main entry point.
+		# Set initial stack frame (esp is set up again because paging is active now) and call kernel's architecture main entry point.
 		movl $stack_top, %esp
 		movl %esp, %ebp
 		# The multiboot2 structure was still using the old physical address, fix it.
@@ -169,6 +165,6 @@
 		# the halt instruction stops the processor until an enabled interrupt (such as SMI or NMI), the BINIT signal, the INIT signal or the
 		# RESET signal is received.
 		cli
-		loop:
-			hlt
-			jmp loop
+	1:
+		hlt
+		jmp 1b
