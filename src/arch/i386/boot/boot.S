@@ -71,13 +71,7 @@
 	stack_top:
 
 .extern _KERNEL_TEXT_START_
-.extern _KERNEL_TEXT_END_
-.extern _KERNEL_RODATA_START_
-.extern _KERNEL_RODATA_END_
 .extern _KERNEL_DATA_START_
-.extern _KERNEL_DATA_END_
-.extern _KERNEL_BSS_START_
-.extern _KERNEL_END_
 
 .section .text
 
