@@ -5,5 +5,5 @@
 
 void kmain(bootinfo_t *boot_info) {
 	pmm_init(boot_info);
-	printk("Init done.\n");
+	printk("[KERNEL]: Init done.\n");
 }

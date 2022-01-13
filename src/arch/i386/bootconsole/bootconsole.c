@@ -2,8 +2,9 @@
 #include <stddef.h>
 #include <arch/bootconsole/bootconsole.h>
 
-extern bootconsole_t bootconsole_vga_text_mode;
+extern bootconsole_t bootconsole_mem;
 extern bootconsole_t bootconsole_serial;
+extern bootconsole_t bootconsole_vga_text_mode;
 bootconsole_t *bootconsole;
 static bool bootconsole_enabled = 1;
 
@@ -17,16 +18,19 @@ bool bootconsole_is_enabled() {
 
 void bootconsole_init(bootconsole_type_t console_type) {
 	switch (console_type) {
-		case BOOTCONSOLE_VGA:
-			bootconsole = &bootconsole_vga_text_mode;
+		case BOOTCONSOLE_MEM:
+			bootconsole = &bootconsole_mem;
 			break;
 		case BOOTCONSOLE_SERIAL:
 			bootconsole = &bootconsole_serial;
 			break;
+		case BOOTCONSOLE_VGA_TEXT_MODE:
+			bootconsole = &bootconsole_vga_text_mode;
+			break;
 			//TODO: support other bootconsole types in the future, like framebuffer etc...
 		default:
-			//default to the vga implementation.
-			bootconsole = &bootconsole_vga_text_mode;
+			//default to the serial implementation.
+			bootconsole = &bootconsole_serial;
 	};
 	bootconsole->console_init();
 }

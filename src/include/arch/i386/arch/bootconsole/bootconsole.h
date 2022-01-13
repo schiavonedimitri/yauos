@@ -6,8 +6,9 @@
 #include <stdint.h>
 
 typedef enum bootconsole_type {
-	BOOTCONSOLE_VGA = 1,
+	BOOTCONSOLE_MEM = 1,
 	BOOTCONSOLE_SERIAL = 2,
+	BOOTCONSOLE_VGA_TEXT_MODE = 3,
 } bootconsole_type_t;
 
 typedef struct bootconsole {

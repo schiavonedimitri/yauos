@@ -24,7 +24,7 @@ ISO_DIR	:=$(PROJECT_DIR)/iso
 OBJ_DIR:=$(PROJECT_DIR)/obj
 BIN_DIR:=$(PROJECT_DIR)/bin
 
-BOOTCONSOLE?=VGA
+BOOTCONSOLE?=serial
 EARLY_HEAP_SIZE?=4096
 DEBUG_ENABLE?=0
 
@@ -98,15 +98,25 @@ $(ISO_DIR)/yauos.iso: $(BIN_DIR)/yauos
 	@mkdir -p $(PROJECT_DIR)/tmp/boot
 	@mkdir -p $(PROJECT_DIR)/tmp/boot/grub
 	@cp $(BIN_DIR)/yauos $(PROJECT_DIR)/tmp/boot
-	@echo > $(PROJECT_DIR)/tmp/boot/grub/grub.cfg 'menuentry "yauos" { multiboot2 /boot/yauos bootconsole=serial }'
+	@echo > $(PROJECT_DIR)/tmp/boot/grub/grub.cfg 'menuentry "yauos" { multiboot2 /boot/yauos bootconsole=$(BOOTCONSOLE) }'
 	@grub-mkrescue -o $(ISO_DIR)/yauos.iso $(PROJECT_DIR)/tmp
 	@rm -rf $(PROJECT_DIR)/tmp
 
+ifeq ($(BOOTCONSOLE), vga)
+qemu: $(ISO_DIR)/yauos.iso
+	@qemu-system-$(ARCH) -monitor stdio -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso
+else
 qemu: $(ISO_DIR)/yauos.iso
 	@qemu-system-$(ARCH) -serial mon:stdio -nographic -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso
+endif
 
+ifeq ($(BOOTCONSOLE), vga)
+qemu-gdb: $(ISO_DIR)/yauos.iso
+	@qemu-system-$(ARCH) -monitor stdio -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso
+else
 qemu-gdb: $(ISO_DIR)/yauos.iso
 	@qemu-system-$(ARCH) -serial mon:stdio -nographic -s -S -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso
+endif
 
 clean:
 	@rm -rf $(BIN_DIR)/*

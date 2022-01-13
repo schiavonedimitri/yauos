@@ -11,6 +11,9 @@
 #include <platform/multiboot2/multiboot2.h>
 
 extern void gdt_init();
+extern size_t bootconsole_mem_get_number_buffered_items();
+extern void bootconsole_mem_flush_buffer(char*);
+extern void kmain(bootinfo_t*);
 
 /*
  * This is the kernel architecture specific entry point after the early boot code.
@@ -18,21 +21,27 @@ extern void gdt_init();
  * initialization of the early boot console, etc...
  */
 
-extern void kmain(bootinfo_t*);
-
 void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	gdt_init();
-	bootconsole_init(BOOTCONSOLE_VGA);
+	bootconsole_init(BOOTCONSOLE_MEM);
+	printk("[KERNEL]: Initialized memory buffered boot console.\n");
 	bootinfo_t *boot_info = (bootinfo_t*) bmalloc(sizeof(bootinfo_t));
+	boot_info->karg_entries = 0;
+	boot_info->karg_entry = NULL;
 	if (!boot_info) {
-		printk("Failed to allocate memory for boot_info!\n");
+		printk("[KERNEL]: Failed to allocate memory for boot_info!\n");
 		return;
 	}
+	//TODO: split this mess into functions and clean up the code.
 	multiboot2_tag_header_t *tag;
 	for (tag = (multiboot2_tag_header_t*) ((uintptr_t) (m_boot2_info) + 8); tag->type != MULTIBOOT2_TAG_END_TYPE;) {
+		//TODO: split into functions and better handle corner cases for the kernel command line errors in the future.
 		if (tag->type == MULTIBOOT2_TAG_BOOT_COMMANDLINE_TYPE) {
 			multiboot2_tag_boot_command_line_t *cmd_line = (multiboot2_tag_boot_command_line_t*) tag;
 			size_t n_args = 0;
+			if (cmd_line->size == 9) { //9 is the size in bytes of an empty command line. See multiboot2.h file.
+				break;
+			}
 			for (size_t i = 0; i < cmd_line->size - 8; i++) {
 				if (cmd_line->string[i] == ' ' || cmd_line->string[i] == '\0') {
 					n_args++;
@@ -40,6 +49,11 @@ void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 			}
 			boot_info->karg_entries = n_args;
 			karg_t *kargs = (karg_t*) bmalloc(sizeof(karg_t) * n_args);
+			for (size_t i = 0; i < n_args; i++) {
+				kargs[i].key = NULL;
+				kargs[i].value = NULL;
+			}
+			bool o_break = 0;
 			bool is_key = 1;
 			size_t key_size = 0;
 			size_t value_size = 0;
@@ -50,22 +64,34 @@ void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 				else {
 					value_size++;
 				}
-				if (cmd_line->string[i] == '=') {
+				if (is_key && (cmd_line->string[i] == '=')) {
 					char *key = (char*) bmalloc(sizeof(char) * key_size);
 					if (!key) {
-						printk("Failed to allocate memory for key!\n");
+						printk("[KERNEL]: Failed to allocate memory for key!\n");
 						return;
 					}
 					memcpy(key, &cmd_line->string[i - (key_size -1) ], key_size - 1);
 					key[key_size] = '\0';
+					for (size_t i = 0; i < n_args; i++) {
+						if (kargs[i].key != NULL) {
+							if (strcmp(kargs[i].key, key) == 0) {
+								printk("[KERNEL]: Command line has multiple definitions for the same key!\n");
+								o_break = 1;
+								break;
+							}
+						}
+					}
+					if (o_break) {
+						break;
+					}
 					kargs[j].key = key;
 					key_size = 0;
 					is_key = 0;
 				}
-				if (cmd_line->string[i] == ' ' || cmd_line->string[i] == '\0') {
+				if (!is_key && (cmd_line->string[i] == ' ' || cmd_line->string[i] == '\0')) {
 					char *value = (char*) bmalloc(sizeof(char) * value_size);
 					if (!value) {
-						printk("Failed to allocate memory for value!\n");
+						printk("[KERNEL]: Failed to allocate memory for value!\n");
 						return;
 					}
 					memcpy(value, &cmd_line->string[i - (value_size - 1)], value_size - 1);
@@ -84,19 +110,78 @@ void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 		}
 		tag = ALIGN((multiboot2_tag_header_t*) ((uintptr_t) (tag) + tag->size), 8);
 	}
-	for (size_t i = 0; i < boot_info->karg_entries; i++) {
-		if (strcmp(boot_info->karg_entry[i].key, "bootconsole") == 0) {
-			if (strcmp(boot_info->karg_entry[i].value, "serial") == 0) {
-				/* TODO: Currently serial bootconsole initialization code has no way of printing output (in case of failure) and so there's some lost output between bootconsoles switching.
-				 * For now the serial bootconsole initialization code hangs the system on failure. In the future a ring buffer could be added to avoid losing output and a way to fallback
-				 * to vga bootconsole again and print any buffered output should be added.
-				 */
+	if (boot_info->karg_entries != 0) {
+		for (size_t i = 0; i < boot_info->karg_entries; i++) {
+			if (boot_info->karg_entry[i].key != NULL && strcmp(boot_info->karg_entry[i].key, "bootconsole") == 0) {
+				if (boot_info->karg_entry[i].value != NULL && strcmp(boot_info->karg_entry[i].value, "serial") == 0) {
+					printk("[KERNEL]: Switching boot console.\n[KERNEL]: Initializing serial boot console.\n");
+					char *buf = (char*) bmalloc(sizeof(char) * bootconsole_mem_get_number_buffered_items());
+					if (!buf) {
+						printk("[KERNEL]: Failed to allocated memory for buf.\n");
+						return;
+					}
+					bootconsole_mem_flush_buffer(buf);
+					bootconsole_init(BOOTCONSOLE_SERIAL);
+					bootconsole_put_string(buf, bootconsole_mem_get_number_buffered_items());
+					printk("[KERNEL]: Initialized serial boot console.\n");
+					break;
+				}
+				else if (boot_info->karg_entry[i].value != NULL && strcmp(boot_info->karg_entry[i].value, "vga") == 0) {
+					printk("[KERNEL]: Switching boot console.\n[KERNEL]: Initializing vga text mode boot console.\n");
+					char *buf = (char*) bmalloc(sizeof(char) * bootconsole_mem_get_number_buffered_items());
+					if (!buf) {
+						printk("[KERNEL]: Failed to allocated memory for buf!\n");
+						return;
+					}
+					bootconsole_mem_flush_buffer(buf);
+					bootconsole_init(BOOTCONSOLE_VGA_TEXT_MODE);
+					bootconsole_put_string(buf, bootconsole_mem_get_number_buffered_items());
+					printk("[KERNEL]: Initialized vga text mode boot console.\n");
+					break;
+				}
+				else {
+					printk("[KERNEL]: No boot console specified in command line, defaulting to serial boot console.\n[KERNEL]: Initializing serial boot console.\n");
+					char *buf = (char*) bmalloc(sizeof(char) * bootconsole_mem_get_number_buffered_items());
+					if (!buf) {
+						printk("[KERNEL]: Failed to allocated memory for buf!\n");
+						return;
+					}
+					bootconsole_mem_flush_buffer(buf);
+					bootconsole_init(BOOTCONSOLE_SERIAL);
+					bootconsole_put_string(buf, bootconsole_mem_get_number_buffered_items());
+					printk("[KERNEL]: Initialized serial boot console.\n");
+					break;
+				}
+			}
+			else {
+				printk("[KERNEL]: No parameters specified in kernel command line, defaulting to serial boot console.\n[KERNEL]: Initializing serial boot console.\n");
+				char *buf = (char*) bmalloc(sizeof(char) * bootconsole_mem_get_number_buffered_items());
+				if (!buf) {
+					printk("[KERNEL]: Failed to allocated memory for buf.\n");
+					return;
+				}
+				bootconsole_mem_flush_buffer(buf);
 				bootconsole_init(BOOTCONSOLE_SERIAL);
+				bootconsole_put_string(buf, bootconsole_mem_get_number_buffered_items());
+				printk("[KERNEL]: Initialized serial boot console.\n");
+				break;
 			}
 		}
 	}
+	else {
+		printk("[KERNEL]: No parameters specified in kernel command line, defaulting to serial boot console.\n[KERNEL]: Initializing serial boot console.\n");
+		char *buf = (char*) bmalloc(sizeof(char) * bootconsole_mem_get_number_buffered_items());
+		if (!buf) {
+			printk("[KERNEL]: Failed to allocated memory for buf.\n");
+			return;
+		}
+		bootconsole_mem_flush_buffer(buf);
+		bootconsole_init(BOOTCONSOLE_SERIAL);
+		bootconsole_put_string(buf, bootconsole_mem_get_number_buffered_items());
+		printk("[KERNEL]: Initialized serial boot console.\n");
+	}
 	if (magic != MULTIBOOT2_MAGIC) {
-		printk("This version of the kernel for the i386 architecture needs to be loaded by a Multiboot2 compliant bootloader!\n");
+		printk("[KERNEL]: This version of the kernel for the i386 architecture needs to be loaded by a Multiboot2 compliant bootloader!\n");
 		return;
 	}
 	memory_entry_t *memory;

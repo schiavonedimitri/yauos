@@ -57,7 +57,7 @@
 	# This is going to be the location of the kernel page directory which will be used throughout the rest of the kernel.
 	.align 4096
 	kernel_directory:
-		.skip 4096
+	.skip 4096
 	# Location of the first page table (4Kb) that maps the first 4Mb physical addresses starting from 0x00000000.
 	# This memory will be reused in higher layers of the kernel initialization.
 	.align 4096
@@ -77,7 +77,7 @@
 	.global _start
 	.type _start, @function
 	_start:
-		# Zero the general purpose registers but eax and ebx because they contain data left by the bootloader.
+		# Zero the general purpose registers but eax and ebx because they contain data left by the bootloader that we need to pass to the upper layers.
 		xorl %edx, %edx
 		movl %edx, %ecx
 		movl %edx, %esi
@@ -88,6 +88,7 @@
 		# VIRTUAL_TO_PHYSICAL is needed because the kernel is linked at 0xC0100000 but is actually loaded at 0x100000, see the linker script.
 		# Manual address fixing is needed because all addresses are virtual but paging is still disabled and we need to work with physical addresses until then.
 		# Kernel .text and .rodata sections are mapped read only, while .data and .bss are mapped read/write according to elf.
+		# Note: some mappings will change after the memory map is inspected by the memory management init code.
 		# 1) Map from 0x0 to _KERNEL_TEXT_START_ R/W.
 		movl $VIRTUAL_TO_PHYSICAL(boot_page_table), %edi
 		movl $VIRTUAL_TO_PHYSICAL(_KERNEL_TEXT_START_), %ecx

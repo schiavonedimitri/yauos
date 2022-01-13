@@ -69,14 +69,14 @@ void pmm_init(bootinfo_t *boot_info) {
 		}
 	}
 	if (ptr == (void*) -1) {
-		printk("Failed to allocate memory for pmm bitmap!\n");
+		printk("[KERNEL]: Failed to allocate memory for pmm bitmap!\n");
 		arch_halt();
 	}
 	pmm_bitmap = (uintptr_t*) PHYSICAL_TO_VIRTUAL(ptr);
 	memset(pmm_bitmap, 0x0, pmm_size);
 	reserve_region(k_start, k_end - k_start);
 	reserve_region(VIRTUAL_TO_PHYSICAL(pmm_bitmap), pmm_size);
-	printk("PMM: Initialized physical memory:\nBlock size: %d bytes\nTotal blocks: %d\nFree blocks: %d\nReserved blocks: %d\nUsed blocks: %d\nTotal available memory: %d bytes\nTotal memory: %d bytes\n", BLOCK_SIZE, pmm_total_blocks, pmm_total_blocks - pmm_used_blocks, pmm_reserved_blocks, pmm_used_blocks, (pmm_total_blocks - pmm_used_blocks) * BLOCK_SIZE, boot_info->memory_size);
+	printk("[KERNEL]: Initialized physical memory:\n[KERNEL]: Block size: %d bytes\n[KERNEL]: Total blocks: %d\n[KERNEL]: Free blocks: %d\n[KERNEL]: Reserved blocks: %d\n[KERNEL]: Used blocks: %d\n[KERNEL]: Total available memory: %d bytes\n[KERNEL]: Total memory: %d bytes\n", BLOCK_SIZE, pmm_total_blocks, pmm_total_blocks - pmm_used_blocks, pmm_reserved_blocks, pmm_used_blocks, (pmm_total_blocks - pmm_used_blocks) * BLOCK_SIZE, boot_info->memory_size);
 }
 
 phys_addr_t pmm_get_free_frame() {
