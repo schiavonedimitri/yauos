@@ -18,7 +18,7 @@ static uint8_t vga_bg_color;
 static uint16_t* vga_buffer;
 static bool wrapped = 0;
 
-void vga_init(void) {
+int vga_init(void) {
 	vga_row = 0;
 	vga_column = 0;
 	vga_fg_color = VGA_COLOR_LIGHT_GREY;
@@ -31,6 +31,7 @@ void vga_init(void) {
 			vga_buffer[index] = vga_entry(' ', vga_color);
 		}
 	}
+	return 1;
 }
 
 static void vga_put_entry_at(unsigned char c, uint8_t color, size_t x, size_t y) {

@@ -7,10 +7,15 @@
 
 static char buffer[BUF_SIZE];
 static size_t cur_index;
+static bool already_initialized = 0;
 
-void bootconsole_mem_init() {
-	memset(buffer, 0x0, BUF_SIZE);
-	cur_index = 0;
+int bootconsole_mem_init() {
+	if (!already_initialized) {
+		memset(buffer, 0x0, BUF_SIZE);
+		cur_index = 0;
+		already_initialized = 1;
+	}
+	return 1;
 }
 
 void bootconsole_mem_put_char(char c) {

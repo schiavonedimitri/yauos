@@ -10,7 +10,7 @@ inline static int is_transmit_empty() {
    return inb(COM1_PORT + 5) & 0x20;
 }
 
-void bootconsole_serial_init() {
+int bootconsole_serial_init() {
 	outb(COM1_PORT + 1, 0x00);
 	outb(COM1_PORT + 3, 0x80);
 	outb(COM1_PORT + 0, 0x01);
@@ -20,10 +20,11 @@ void bootconsole_serial_init() {
 	outb(COM1_PORT + 4, 0x0B);
 	outb(COM1_PORT + 4, 0x1E);
 	outb(COM1_PORT + 0, 0xAA);
-	if(inb(COM1_PORT + 0) != 0xAA) {
-		arch_halt();
+	if (inb(COM1_PORT + 0) != 0xAA) {
+		return -1;
 	}
 	outb(COM1_PORT + 4, 0x0F);
+	return 1;
 }
 
 void bootconsole_serial_put_char(char c) {

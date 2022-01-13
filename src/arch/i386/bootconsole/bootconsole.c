@@ -16,7 +16,7 @@ bool bootconsole_is_enabled() {
 	return bootconsole_enabled;
 }
 
-void bootconsole_init(bootconsole_type_t console_type) {
+int bootconsole_init(bootconsole_type_t console_type) {
 	switch (console_type) {
 		case BOOTCONSOLE_MEM:
 			bootconsole = &bootconsole_mem;
@@ -32,7 +32,7 @@ void bootconsole_init(bootconsole_type_t console_type) {
 			//default to the serial implementation.
 			bootconsole = &bootconsole_serial;
 	};
-	bootconsole->console_init();
+	return bootconsole->console_init();
 }
 
 void bootconsole_put_char(char c) {

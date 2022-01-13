@@ -121,10 +121,27 @@ void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 						return;
 					}
 					bootconsole_mem_flush_buffer(buf);
-					bootconsole_init(BOOTCONSOLE_SERIAL);
-					bootconsole_put_string(buf, bootconsole_mem_get_number_buffered_items());
-					printk("[KERNEL]: Initialized serial boot console.\n");
-					break;
+					if(!bootconsole_init(BOOTCONSOLE_SERIAL)) {
+						bfree(buf);
+						//serial bootconsole failed, switch back to memory ringbuffer to not waste output during switch to vga implementation.
+						bootconsole_init(BOOTCONSOLE_MEM);
+						printk("[KERNEL]: Failed to initialize serial bootconsole, falling back to vga text mode.\n[KERNEL]: initializing vga text mode boot console.\n");
+						buf = (char*) bmalloc(sizeof(char) * bootconsole_mem_get_number_buffered_items());
+						if (!buf) {
+							printk("[KERNEL]: Failed to allocated memory for buf.\n");
+							return;
+						}
+						bootconsole_mem_flush_buffer(buf);
+						bootconsole_init(BOOTCONSOLE_VGA_TEXT_MODE);
+						bootconsole_put_string(buf, bootconsole_mem_get_number_buffered_items());
+						printk("[KERNEL]: Initialized vga text mode boot console.\n");
+						break;
+					}
+					else {
+						bootconsole_put_string(buf, bootconsole_mem_get_number_buffered_items());
+						printk("[KERNEL]: Initialized serial boot console.\n");
+						break;
+					}
 				}
 				else if (boot_info->karg_entry[i].value != NULL && strcmp(boot_info->karg_entry[i].value, "vga") == 0) {
 					printk("[KERNEL]: Switching boot console.\n[KERNEL]: Initializing vga text mode boot console.\n");
