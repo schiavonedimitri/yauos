@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "stdint-gcc.h": "c",
+        "stdint.h": "c"
+    }
+}

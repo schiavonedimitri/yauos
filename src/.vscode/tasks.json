@@ -1,11 +1,12 @@
 {
     "version": "2.0.0",
-    "tasks": [
+    "tasks":
+    [
         {
             "label": "Build",
             "type": "shell",
             "command": "make",
-                "group": {
+            "group": {
                 "kind": "build",
                 "isDefault": true
             }
@@ -14,52 +15,60 @@
             "label": "Build Debug",
             "type": "shell",
             "command": "make",
-                "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "args": ["DEBUG_ENABLE=1"],                
+            "args": [
+                "DEBUG_ENABLE=1"
+            ]
         },
         {
             "label": "Run",
             "dependsOn": [
-                "Build",
+                "Build"
             ],
             "type": "shell",
             "command": "make",
-            "args": ["qemu"]
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "args": [
+                "qemu"
+            ],
+            "problemMatcher": []
         },
         {
             "label": "Run Debug",
-            "dependsOn": ["Build Debug"],
+            "dependsOn": [
+                "Build Debug"
+            ],
             "type": "shell",
             "isBackground": true,
             "command": "make",
-            "args": ["qemu-gdb"],
-            "problemMatcher":
-            {
-                "pattern":
-                [
+            "args": [
+                "qemu-gdb"
+            ],
+            "problemMatcher": {
+                "pattern": [
                     {
-                      "regexp": ".",
-                      "file": 1,
-                      "location": 2,
-                      "message": 3
+                        "regexp": ".",
+                        "file": 1,
+                        "location": 2,
+                        "message": 3
                     }
                 ],
-                  "background":
-                  {
+                "background": {
                     "activeOnStart": true,
                     "beginsPattern": "^Starting debugging session:",
-                    "endsPattern": ".",
-                  }
+                    "endsPattern": "."
+                }
             }
         },
         {
             "label": "Clean",
             "type": "shell",
             "command": "make",
-            "args": ["clean"]
+            "args": [
+                "clean"
+            ]
         }
     ]
 }
