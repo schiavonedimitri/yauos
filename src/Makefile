@@ -98,7 +98,9 @@ $(ISO_DIR)/yauos.iso: $(BIN_DIR)/yauos
 	@mkdir -p $(PROJECT_DIR)/tmp/boot
 	@mkdir -p $(PROJECT_DIR)/tmp/boot/grub
 	@cp $(BIN_DIR)/yauos $(PROJECT_DIR)/tmp/boot
-	@echo > $(PROJECT_DIR)/tmp/boot/grub/grub.cfg 'menuentry "yauos" { multiboot2 /boot/yauos bootconsole=$(BOOTCONSOLE) }'
+	@echo > $(PROJECT_DIR)/tmp/boot/grub/grub.cfg 'set timeout=0'
+	@echo >> $(PROJECT_DIR)/tmp/boot/grub/grub.cfg 'set default=0'
+	@echo >> $(PROJECT_DIR)/tmp/boot/grub/grub.cfg 'menuentry "yauos" { multiboot2 /boot/yauos bootconsole=$(BOOTCONSOLE) }'
 	@grub-mkrescue -o $(ISO_DIR)/yauos.iso $(PROJECT_DIR)/tmp
 	@rm -rf $(PROJECT_DIR)/tmp
 
@@ -112,10 +114,11 @@ endif
 
 ifeq ($(BOOTCONSOLE), vga)
 qemu-gdb: $(ISO_DIR)/yauos.iso
-	@qemu-system-$(ARCH) -monitor stdio -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso
+	@qemu-system-$(ARCH) -monitor stdio -S -s -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso
 else
 qemu-gdb: $(ISO_DIR)/yauos.iso
-	@qemu-system-$(ARCH) -serial mon:stdio -nographic -s -S -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso
+	echo "Starting debugging session:"
+	@qemu-system-$(ARCH) -serial mon:stdio -nographic -S -s -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso
 endif
 
 clean:

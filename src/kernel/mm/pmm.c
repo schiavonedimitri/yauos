@@ -76,7 +76,7 @@ void pmm_init(bootinfo_t *boot_info) {
 	memset(pmm_bitmap, 0x0, pmm_size);
 	reserve_region(k_start, k_end - k_start);
 	reserve_region(VIRTUAL_TO_PHYSICAL(pmm_bitmap), pmm_size);
-	printk("[KERNEL]: Initialized physical memory:\n[KERNEL]: Block size: %d bytes\n[KERNEL]: Total blocks: %d\n[KERNEL]: Free blocks: %d\n[KERNEL]: Reserved blocks: %d\n[KERNEL]: Used blocks: %d\n[KERNEL]: Total available memory: %d bytes\n[KERNEL]: Total memory: %d bytes\n", BLOCK_SIZE, pmm_total_blocks, pmm_total_blocks - pmm_used_blocks, pmm_reserved_blocks, pmm_used_blocks, (pmm_total_blocks - pmm_used_blocks) * BLOCK_SIZE, boot_info->memory_size);
+	printk("[KERNEL]: Initialized physical memory\n[KERNEL]: Block size: %d bytes\n[KERNEL]: Total blocks: %d\n[KERNEL]: Free blocks: %d\n[KERNEL]: Reserved blocks: %d\n[KERNEL]: Used blocks: %d\n[KERNEL]: Total available memory: %d bytes\n[KERNEL]: Total memory: %d bytes\n", BLOCK_SIZE, pmm_total_blocks, pmm_total_blocks - pmm_used_blocks, pmm_reserved_blocks, pmm_used_blocks, (pmm_total_blocks - pmm_used_blocks) * BLOCK_SIZE, boot_info->memory_size);
 }
 
 phys_addr_t pmm_get_free_frame() {
