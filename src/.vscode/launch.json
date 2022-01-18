@@ -1,0 +1,20 @@
+{
+    "version": "0.2.0",
+    "configurations": [      
+        {
+          "name": "Debug YauOs",
+          "type": "cppdbg",
+          "request": "launch",
+          "program": "${workspaceFolder}/../bin/yauos",
+          "cwd": "${workspaceFolder}",
+          "externalConsole": false,
+          "launchCompleteCommand": "exec-run",
+          "MIMode": "gdb",
+          "setupCommands": [
+            {"text": "file /home/dimitri/Osdev/yauos/bin/yauos"},
+            {"text": "target remote localhost:1234"},
+          ],
+          "preLaunchTask": "Run Debug"
+        }
+    ]
+}    

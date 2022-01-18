@@ -1,0 +1,16 @@
+{
+    "configurations": [
+        {
+            "name": "YauOs",
+            "includePath": [
+                "${workspaceFolder}/include/**",
+                "${workspaceFolder}/../toolchain/lib/gcc/i386-elf/11.2.0/include"
+            ],
+            "defines": [],
+            "compilerPath": "${workspaceFolder}/../toolchain/bin/i386-elf-gcc",
+            "cStandard": "gnu11",
+            "intelliSenseMode": "gcc-x86"
+        }
+    ],
+    "version": 4
+}
