@@ -11,7 +11,7 @@
           "launchCompleteCommand": "exec-run",
           "MIMode": "gdb",
           "setupCommands": [
-            {"text": "file /home/dimitri/Osdev/yauos/bin/yauos"},
+            {"text": "file ${workspaceFolder}/../bin/yauos"},
             {"text": "target remote localhost:1234"},
           ],
           "preLaunchTask": "Run Debug"
