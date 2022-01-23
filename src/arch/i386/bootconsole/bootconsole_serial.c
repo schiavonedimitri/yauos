@@ -1,8 +1,8 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <arch/arch.h>
-#include <arch/bootconsole/bootconsole.h>
 #include <arch/cpu/io.h>
+#include <kernel/bootconsole.h>
 
 #define COM1_PORT 0x3F8
 

@@ -1,6 +1,6 @@
 #include <stdbool.h>
 #include <stddef.h>
-#include <arch/bootconsole/bootconsole.h>
+#include <kernel/bootconsole.h>
 
 extern bootconsole_t bootconsole_mem;
 extern bootconsole_t bootconsole_serial;

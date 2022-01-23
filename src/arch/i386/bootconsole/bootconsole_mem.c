@@ -1,7 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
-#include <arch/bootconsole/bootconsole.h>
-#include <lib/string/string.h>
+#include <kernel/bootconsole.h>
+#include <lib/string.h>
 
 #define BUF_SIZE 4096
 

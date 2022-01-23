@@ -1,5 +1,5 @@
 #include <stddef.h>
-#include <lib/string/string.h>
+#include <lib/string.h>
 #include <kernel/printk.h>
 
 int memcmp(const void *aptr, const void *bptr, size_t size) {

@@ -3,9 +3,9 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <arch/arch.h>
-#include <arch/bootconsole/bootconsole.h>
+#include <kernel/bootconsole.h>
 #include <kernel/printk.h>
-#include <lib/string/string.h>
+#include <lib/string.h>
 
 static void print_int_u32(uint32_t value, uint8_t base) {
 	if (value == 0) {

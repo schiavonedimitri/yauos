@@ -1,13 +1,13 @@
 #include <stddef.h>
 #include <stdint.h>
-#include <arch/arch.h>
 #include <arch/align.h>
+#include <arch/arch.h>
 #include <arch/mmu.h>
 #include <arch/types.h>
 #include <kernel/bootinfo.h>
 #include <kernel/printk.h>
-#include <lib/bitmap/bitmap.h>
-#include <lib/string/string.h>
+#include <lib/bitmap.h>
+#include <lib/string.h>
 #include "pmm.h"
 
 static phys_addr_t k_start = VIRTUAL_TO_PHYSICAL(&_KERNEL_START_);

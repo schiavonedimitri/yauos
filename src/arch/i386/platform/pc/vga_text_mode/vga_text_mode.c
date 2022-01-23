@@ -1,9 +1,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <arch/bootconsole/bootconsole.h>
 #include <arch/mmu.h>
-#include <lib/string/string.h>
+#include <kernel/bootconsole.h>
+#include <lib/string.h>
 #include "vga_text_mode.h"
 
 static const size_t VGA_WIDTH = 80;

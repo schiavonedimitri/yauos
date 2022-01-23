@@ -1,9 +1,9 @@
-#include <stdint.h>
-#include <stddef.h>
 #include <stdalign.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <arch/align.h>
 #include <arch/types.h>
-#include <lib/string/string.h>
+#include <lib/string.h>
 #include "bootmem.h"
 
 /*
