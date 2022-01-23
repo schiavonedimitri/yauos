@@ -193,30 +193,39 @@ void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	memory_entry_t *memory;
 	for (tag = (multiboot2_tag_header_t*) ((uintptr_t) (m_boot2_info) + 8); tag->type != MULTIBOOT2_TAG_END_TYPE;) {
 		if (tag->type == MULTIBOOT2_TAG_MEMORY_MAP_TYPE) {
-			size_t number_available_entries = 0;
+			size_t number_additional_entries = 0;
 			multiboot2_tag_memory_map_t *memory_map = (multiboot2_tag_memory_map_t*) tag;
 			multiboot2_tag_memory_map_entry_t *entry = (multiboot2_tag_memory_map_entry_t*) memory_map->entries;
 			size_t number_entries = (memory_map->size - 16) / memory_map->entry_size;
 			for (size_t i = 0; i < number_entries; i++) {
-				if(entry->type == MULTIBOOT2_MEMORY_AVAILABLE || entry->type == MULTIBOOT2_MEMORY_ACPI_RECLAIMABLE){
-					number_available_entries++;
+				if((i + 1) < number_entries && entry[i].base_addr + entry[i].length != entry[i + 1].base_addr) {
+					number_additional_entries++;
 				}
-				entry++;
 			}
-			memory = (memory_entry_t*) bmalloc(sizeof(memory_entry_t) * number_available_entries);
-			assert((virt_addr_t*) memory != (virt_addr_t*) NULL);
-			entry = (multiboot2_tag_memory_map_entry_t*) memory_map->entries;
-			for (size_t i = 0; i < number_entries; i++) {
-				if(entry->type == MULTIBOOT2_MEMORY_AVAILABLE || entry->type == MULTIBOOT2_MEMORY_ACPI_RECLAIMABLE){
-					boot_info->memory_size += entry->length;
-					memory->base_addr = entry->base_addr;
-					memory->length = entry->length;
-					memory++;
+			boot_info->memory_map_entries = number_entries + number_additional_entries;
+			memory = (memory_entry_t*) bmalloc(sizeof(memory_entry_t) * (number_entries + number_additional_entries));
+			if (!memory) {
+				panic("Failed to allocate memory for memory!\n");
+			}
+			for (size_t i = 0, j = 0; i < number_entries; i++, j++) {
+				if (entry[i].type == MULTIBOOT2_MEMORY_AVAILABLE || entry[i].type == MULTIBOOT2_MEMORY_ACPI_RECLAIMABLE) {
+					boot_info->memory_size += entry[i].length;
+					memory[j].type = MEMORY_AVAILABLE;
 				}
-				entry++;
+				else {
+					memory[j].type = MEMORY_RESERVED;
+				}	
+				memory[j].base_addr = entry[i].base_addr;
+				memory[j].length = entry[i].length;
+				if((i + 1) < number_entries && entry[i].base_addr + entry[i].length != entry[i + 1].base_addr) {
+					memory[j + 1].base_addr = entry[i].base_addr + entry[i].length;
+					memory[j + 1].length = entry[i + 1].base_addr - (entry[i].base_addr + entry[i].length);
+					memory[j + 1].type = MEMORY_UNSPEC;
+					j++;
+				}				
 			}
-			boot_info->memory_map_entries = number_available_entries;
-			boot_info->memory_map_entry = memory - number_available_entries;
+			boot_info->memory_map_entry = memory;
+
 			break;
 		}
 		tag = ALIGN((multiboot2_tag_header_t*) ((uintptr_t) (tag) + tag->size), 8);

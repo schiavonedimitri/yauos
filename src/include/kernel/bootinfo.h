@@ -9,7 +9,9 @@
  * All architectures that want to support the kernel need to pass boot information in a way the kernel understands it.
  */
 
-#include <stdint.h>
+#define MEMORY_RESERVED 0
+#define MEMORY_AVAILABLE 1
+#define MEMORY_UNSPEC 2
 
 typedef struct karg {
 	char* key;
@@ -19,6 +21,7 @@ typedef struct karg {
 typedef struct memory_entry {
 	uint64_t base_addr;
 	size_t length;
+	uint8_t type;
 } memory_entry_t;
 
 typedef struct bootinfo {

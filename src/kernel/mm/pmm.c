@@ -37,17 +37,20 @@ static void reserve_region(phys_addr_t start_addr, size_t size) {
 	}
 }
 
+/*
+* The kernel expects every architecture to pass it a complete memory map with every available and reserved region. See bootinfo.h
+*/
+
 void pmm_init(bootinfo_t *boot_info) {
-	pmm_total_blocks = boot_info->memory_size / BLOCK_SIZE;
+	pmm_total_blocks = 0xFFFFFFFF / BLOCK_SIZE;
 	pmm_size = pmm_total_blocks / 8;
 	void *ptr = (void*) -1;
 	if (pmm_total_blocks % 8) {
 		pmm_size++;
 	}
-	//TODO: currently the physical memory manager doesn't take into account the memory map holes and this leads to allocate memory locations which might not exist or be reserved!
 	for (size_t i = 0; i < boot_info->memory_map_entries; i++) {
 		ptr = (void*) -1;
-		if(boot_info->memory_map_entry[i].length >= pmm_size) {
+		if(boot_info->memory_map_entry[i].length >= pmm_size && boot_info->memory_map_entry[i].type == MEMORY_AVAILABLE) {
 			if (boot_info->memory_map_entry[i].base_addr != (phys_addr_t) k_start) {
 				if ((phys_addr_t) (boot_info->memory_map_entry[i].base_addr + pmm_size - 1) < k_start) {
 					ptr = (void*) (phys_addr_t) boot_info->memory_map_entry[i].base_addr;
@@ -69,11 +72,15 @@ void pmm_init(bootinfo_t *boot_info) {
 		}
 	}
 	if (ptr == (void*) -1) {
-		printk("[KERNEL]: Failed to allocate memory for pmm bitmap!\n");
-		arch_halt();
+		panic("[KERNEL]: Failed to allocate memory for pmm bitmap!\n");
 	}
 	pmm_bitmap = (uintptr_t*) PHYSICAL_TO_VIRTUAL(ptr);
 	memset(pmm_bitmap, 0x0, pmm_size);
+	for (size_t i = 0; i < boot_info->memory_map_entries; i++) {
+		if (boot_info->memory_map_entry[i].type == MEMORY_RESERVED || boot_info->memory_map_entry[i].type == MEMORY_UNSPEC) {
+			reserve_region(boot_info->memory_map_entry[i].base_addr, boot_info->memory_map_entry[i].length);
+		}
+	}
 	reserve_region(k_start, k_end - k_start);
 	reserve_region(VIRTUAL_TO_PHYSICAL(pmm_bitmap), pmm_size);
 	printk("[KERNEL]: Initialized physical memory\n[KERNEL]: Block size: %d bytes\n[KERNEL]: Total blocks: %d\n[KERNEL]: Free blocks: %d\n[KERNEL]: Reserved blocks: %d\n[KERNEL]: Used blocks: %d\n[KERNEL]: Total available memory: %d bytes\n[KERNEL]: Total memory: %d bytes\n", BLOCK_SIZE, pmm_total_blocks, pmm_total_blocks - pmm_used_blocks, pmm_reserved_blocks, pmm_used_blocks, (pmm_total_blocks - pmm_used_blocks) * BLOCK_SIZE, boot_info->memory_size);
