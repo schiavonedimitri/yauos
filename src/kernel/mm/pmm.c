@@ -42,7 +42,10 @@ static void reserve_region(phys_addr_t start_addr, size_t size) {
 */
 
 void pmm_init(bootinfo_t *boot_info) {
-	pmm_total_blocks = 0xFFFFFFFF / BLOCK_SIZE;
+	pmm_total_blocks = boot_info->address_space_size / BLOCK_SIZE;
+	if (boot_info->address_space_size % BLOCK_SIZE) {
+		pmm_total_blocks++;
+	}
 	pmm_size = pmm_total_blocks / 8;
 	void *ptr = (void*) -1;
 	if (pmm_total_blocks % 8) {

@@ -2,7 +2,8 @@
     "files.associations": {
         "stdint-gcc.h": "c",
         "stdint.h": "c",
-        "bitmap.h": "c"
+        "bitmap.h": "c",
+        "bootinfo.h": "c"
     },
     "git.enableCommitSigning": true
 }

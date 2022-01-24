@@ -26,6 +26,7 @@ void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	bootconsole_init(BOOTCONSOLE_MEM);
 	printk("[KERNEL]: Initialized memory buffered boot console.\n");
 	bootinfo_t *boot_info = (bootinfo_t*) bmalloc(sizeof(bootinfo_t));
+	boot_info->address_space_size = 0xFFFFFFFF;
 	boot_info->karg_entries = 0;
 	boot_info->karg_entry = NULL;
 	if (!boot_info) {
@@ -225,7 +226,6 @@ void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 				}				
 			}
 			boot_info->memory_map_entry = memory;
-
 			break;
 		}
 		tag = ALIGN((multiboot2_tag_header_t*) ((uintptr_t) (tag) + tag->size), 8);
