@@ -191,6 +191,15 @@ void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	if (magic != MULTIBOOT2_MAGIC) {
 		panic("[KERNEL]: This version of the kernel for the i386 architecture needs to be loaded by a Multiboot2 compliant bootloader!\n");
 	}
+	/*
+	 * Computing bootinfo memory map entries. First we need to understand that the memory map provided by multiboot2 does not take into account
+	 * all the reserved memory regions in i386 low memory (below 1Mib mark). Next the provided memory map specifies only usable regions, but we compute
+	 * the memory map to take into account regions usable for mapping hardware (that is, regions that are not ram, rom or reserved) and to reserve
+	 * known memory regions below 1Mib mark and the ISA memory hole at 14Mib mark. Since this is low level code specific to i386 it is safe to make this 
+	 * assumptions and pass all the known reserved areas to the upper kernel as reserved regions.
+	 * The memory below 1Mib mark is reserved despite multiboot2 telling it's free to be able to use vm86 mode and in case there's need to return to real mode (unlikely apart vm86 mode).
+	 * See https://wiki.osdev.org/Memory_Map_(x86) for more info.
+	 */
 	memory_entry_t *memory;
 	for (tag = (multiboot2_tag_header_t*) ((uintptr_t) (m_boot2_info) + 8); tag->type != MULTIBOOT2_TAG_END_TYPE;) {
 		if (tag->type == MULTIBOOT2_TAG_MEMORY_MAP_TYPE) {
@@ -198,20 +207,26 @@ void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 			multiboot2_tag_memory_map_t *memory_map = (multiboot2_tag_memory_map_t*) tag;
 			multiboot2_tag_memory_map_entry_t *entry = (multiboot2_tag_memory_map_entry_t*) memory_map->entries;
 			size_t number_entries = (memory_map->size - 16) / memory_map->entry_size;
+			// Stretching the entries from the memory map to compute unspecified regions.
 			for (size_t i = 0; i < number_entries; i++) {
 				if((i + 1) < number_entries && entry[i].base_addr + entry[i].length != entry[i + 1].base_addr) {
 					number_additional_entries++;
 				}
 			}
+			// Allocating enough space for the original memory entries plus the additional ones made from stretching the original memory map.
 			boot_info->memory_map_entries = number_entries + number_additional_entries;
 			memory = (memory_entry_t*) bmalloc(sizeof(memory_entry_t) * (number_entries + number_additional_entries));
 			if (!memory) {
 				panic("Failed to allocate memory for memory!\n");
 			}
+			// Making new memory map with additonal entries made from stretching the original memory map. Old entries are copied as is in their correct location.
 			for (size_t i = 0, j = 0; i < number_entries; i++, j++) {
-				if (entry[i].type == MULTIBOOT2_MEMORY_AVAILABLE || entry[i].type == MULTIBOOT2_MEMORY_ACPI_RECLAIMABLE) {
+				if (entry[i].type == MULTIBOOT2_MEMORY_AVAILABLE) {
 					boot_info->memory_size += entry[i].length;
 					memory[j].type = MEMORY_AVAILABLE;
+				}
+				else if (entry[i].type == MULTIBOOT2_MEMORY_ACPI_RECLAIMABLE) {
+					memory[j].type = MEMORY_RESERVED;
 				}
 				else {
 					memory[j].type = MEMORY_RESERVED;
@@ -230,5 +245,78 @@ void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 		}
 		tag = ALIGN((multiboot2_tag_header_t*) ((uintptr_t) (tag) + tag->size), 8);
 	}
+	/*
+	 * Calculating how many entries are there in the stretched memory map before 0x100000. This is to ensure that known < 1Mib regions of memory
+	 * are correctly reserved according to the known x86 memory map. The rationale behind this is that the bios doesn't provided a memory
+	 * map with real mode IVT and other regions marked as reserved. This is done to preserve the possibility to go back to real mode or vm86 mode later.
+	 * All the entries (assuming they exists in the provided orignal memory map) below 0x100000 are deleted and manually crafted below.
+	 */
+	size_t entries_to_remove = 0;
+	for (size_t i = 0; i < boot_info->memory_map_entries; i++) {
+		uint64_t end_addr = boot_info->memory_map_entry[i].base_addr + boot_info->memory_map_entry[i].length - 1;
+		if(end_addr <= 0xFFFFF || boot_info->memory_map_entry[i].base_addr == 0x100000) {
+			entries_to_remove++;
+		}
+	}
+	/*
+	 * Computing low memory (below 1Mib) map according to https://wiki.osdev.org/Memory_Map_(x86)
+	 * The new number of entries is calculated by removing all the entries below 0x100000 and the entry at 0x100000.
+	 * After this there are 10 new memory entries below 1Mib mark to manually add, and 3 entries for the region above 1Mib to take into account 
+	 * the ISA memory hole and the region before and after it.
+	 * It would've been simpler to just set all the memory below 1Mib to reserved...
+	 */
+	size_t final_number_entries = boot_info->memory_map_entries - entries_to_remove + 13;
+	boot_info->memory_map_entries = final_number_entries;
+	memory_entry_t *final_memory_entries = (memory_entry_t*) bmalloc(sizeof(memory_entry_t) * final_number_entries);
+	if (!final_memory_entries) {
+		panic("Failed to allocate memory for final_memory_entries!\n");
+	}
+	final_memory_entries[0].base_addr = 0x0;
+	final_memory_entries[0].length = 0x400;
+	final_memory_entries[0].type = MEMORY_RESERVED;
+	final_memory_entries[1].base_addr = 0x400;
+	final_memory_entries[1].length = 0x100;
+	final_memory_entries[1].type = MEMORY_RESERVED;
+	final_memory_entries[2].base_addr = 0x500;
+	final_memory_entries[2].length = 0x7700;
+	final_memory_entries[2].type = MEMORY_AVAILABLE;
+	final_memory_entries[3].base_addr = 0x7C00;
+	final_memory_entries[3].length = 0x200;
+	final_memory_entries[3].type = MEMORY_RESERVED;
+	final_memory_entries[4].base_addr = 0x7E00;
+	final_memory_entries[4].length = 0x78200;
+	final_memory_entries[4].type = MEMORY_AVAILABLE;
+	final_memory_entries[5].base_addr = 0x80000;
+	final_memory_entries[5].length = 0x20000;
+	final_memory_entries[5].type = MEMORY_RESERVED;
+	final_memory_entries[6].base_addr = 0xA0000;
+	final_memory_entries[6].length = 0x20000;
+	final_memory_entries[6].type = MEMORY_RESERVED;
+	final_memory_entries[7].base_addr = 0xC0000;
+	final_memory_entries[7].length = 0x8000;
+	final_memory_entries[7].type = MEMORY_RESERVED;
+	final_memory_entries[8].base_addr = 0xC8000;
+	final_memory_entries[8].length = 0x28000;
+	final_memory_entries[8].type = MEMORY_RESERVED;
+	final_memory_entries[9].base_addr = 0xF0000;
+	final_memory_entries[9].length = 0x10000;
+	final_memory_entries[9].type = MEMORY_RESERVED;
+	final_memory_entries[10].base_addr = 0x100000;
+	final_memory_entries[10].length = 0xE00000;
+	final_memory_entries[10].type = MEMORY_AVAILABLE;
+	final_memory_entries[11].base_addr =  0xF00000;
+	final_memory_entries[11].length = 0x100000;
+	final_memory_entries[11].type = MEMORY_RESERVED;
+	final_memory_entries[12].base_addr = 0x1000000;
+	final_memory_entries[12].length = boot_info->memory_map_entry[entries_to_remove - 1].length - 0xF00000;
+	final_memory_entries[12].type = MEMORY_AVAILABLE;
+		for (size_t i = entries_to_remove, j = 13; j < final_number_entries && i < boot_info->memory_map_entries; i++, j++) {
+		final_memory_entries[j].base_addr = boot_info->memory_map_entry[i].base_addr;
+		final_memory_entries[j].length = boot_info->memory_map_entry[i].length;
+		final_memory_entries[j].type = boot_info->memory_map_entry[i].type;
+	}
+	// Free old strechted memory map entries.
+	bfree(boot_info->memory_map_entry);
+	boot_info->memory_map_entry = final_memory_entries;
 	kmain(boot_info);
 }

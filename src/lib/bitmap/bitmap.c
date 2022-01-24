@@ -1,7 +1,6 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "bitmap.h"
-#include <kernel/printk.h>
 
 void bitmap_set(void *bitmap, int bit) {
 	unsigned long *b_map = (unsigned long*) bitmap;
