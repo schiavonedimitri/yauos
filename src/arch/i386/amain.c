@@ -290,7 +290,7 @@ void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	final_memory_entries[7].base_addr = 0x1000000;
 	final_memory_entries[7].length = boot_info->memory_map_entry[entries_to_remove - 1].length - 0xF00000;
 	final_memory_entries[7].type = MEMORY_AVAILABLE;
-		for (size_t i = entries_to_remove, j = 8; j < final_number_entries && i < boot_info->memory_map_entries; i++, j++) {
+		for (size_t i = entries_to_remove, j = 8; j < final_number_entries && i < final_number_entries; i++, j++) {
 		final_memory_entries[j].base_addr = boot_info->memory_map_entry[i].base_addr;
 		final_memory_entries[j].length = boot_info->memory_map_entry[i].length;
 		final_memory_entries[j].type = boot_info->memory_map_entry[i].type;
