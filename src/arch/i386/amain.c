@@ -215,15 +215,20 @@ void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 				panic("Failed to allocate memory for memory!\n");
 			}
 			// Making new memory map with additonal entries made from stretching the original memory map. Old entries are copied as is in their correct location.
+			printk("[KERNEL]: multiboot2 memory map:\n");
 			for (size_t i = 0, j = 0; i < number_entries; i++, j++) {
 				if (entry[i].type == MULTIBOOT2_MEMORY_AVAILABLE) {
+					printk("[KERNEL]: Region: [%lx] [%lx] [AVAILABLE]\n", entry[i].base_addr, entry[i].base_addr + entry[i].length - 1);
 					boot_info->memory_size += entry[i].length;
 					memory[j].type = MEMORY_AVAILABLE;
 				}
 				else if (entry[i].type == MULTIBOOT2_MEMORY_ACPI_RECLAIMABLE) {
+					printk("[KERNEL]: Region: [%lx] [%lx] [ACPI_RECLAIMABLE]\n", entry[i].base_addr, entry[i].base_addr + entry[i].length - 1);
 					memory[j].type = MEMORY_RESERVED;
 				}
 				else {
+					// This includes all the other memory types provided by multiboot2. See multiboot2.h for more information.
+					printk("[KERNEL]: Region: [%lx] [%lx] [RESERVED]\n", entry[i].base_addr, entry[i].base_addr + entry[i].length - 1);
 					memory[j].type = MEMORY_RESERVED;
 				}	
 				memory[j].base_addr = entry[i].base_addr;

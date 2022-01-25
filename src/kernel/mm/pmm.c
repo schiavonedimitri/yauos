@@ -21,7 +21,7 @@ static size_t pmm_used_blocks = 0;
 static size_t pmm_reserved_blocks = 0;
 
 static void print_memory_map(bootinfo_t *boot_info) {
-	printk("[KERNEL]: Memory map\n");
+	printk("[KERNEL]: Final Memory map\n");
 	for (size_t i = 0; i < boot_info->memory_map_entries; i++) {
 		printk("[KERNEL]: Region: [%lx-%lx] ", boot_info->memory_map_entry[i].base_addr, boot_info->memory_map_entry[i].base_addr + boot_info->memory_map_entry[i].length - 1);
 		if (boot_info->memory_map_entry[i].type == MEMORY_AVAILABLE) {
