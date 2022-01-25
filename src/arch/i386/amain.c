@@ -265,52 +265,37 @@ void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	 * the ISA memory hole and the region before and after it.
 	 * It would've been simpler to just set all the memory below 1Mib to reserved...
 	 */
-	size_t final_number_entries = boot_info->memory_map_entries - entries_to_remove + 13;
+	size_t final_number_entries = boot_info->memory_map_entries - entries_to_remove + 8;
 	boot_info->memory_map_entries = final_number_entries;
 	memory_entry_t *final_memory_entries = (memory_entry_t*) bmalloc(sizeof(memory_entry_t) * final_number_entries);
 	if (!final_memory_entries) {
 		panic("Failed to allocate memory for final_memory_entries!\n");
 	}
 	final_memory_entries[0].base_addr = 0x0;
-	final_memory_entries[0].length = 0x400;
+	final_memory_entries[0].length = 0x500;
 	final_memory_entries[0].type = MEMORY_RESERVED;
-	final_memory_entries[1].base_addr = 0x400;
-	final_memory_entries[1].length = 0x100;
-	final_memory_entries[1].type = MEMORY_RESERVED;
-	final_memory_entries[2].base_addr = 0x500;
-	final_memory_entries[2].length = 0x7700;
-	final_memory_entries[2].type = MEMORY_AVAILABLE;
-	final_memory_entries[3].base_addr = 0x7C00;
-	final_memory_entries[3].length = 0x200;
-	final_memory_entries[3].type = MEMORY_RESERVED;
-	final_memory_entries[4].base_addr = 0x7E00;
-	final_memory_entries[4].length = 0x78200;
-	final_memory_entries[4].type = MEMORY_AVAILABLE;
-	final_memory_entries[5].base_addr = 0x80000;
-	final_memory_entries[5].length = 0x20000;
-	final_memory_entries[5].type = MEMORY_RESERVED;
-	final_memory_entries[6].base_addr = 0xA0000;
-	final_memory_entries[6].length = 0x20000;
+	final_memory_entries[1].base_addr = 0x500;
+	final_memory_entries[1].length = 0x7700;
+	final_memory_entries[1].type = MEMORY_AVAILABLE;
+	final_memory_entries[2].base_addr = 0x7C00;
+	final_memory_entries[2].length = 0x200;
+	final_memory_entries[2].type = MEMORY_RESERVED;
+	final_memory_entries[3].base_addr = 0x7E00;
+	final_memory_entries[3].length = 0x78200;
+	final_memory_entries[3].type = MEMORY_AVAILABLE;
+	final_memory_entries[4].base_addr = 0x80000;
+	final_memory_entries[4].length = 0x80000;
+	final_memory_entries[4].type = MEMORY_RESERVED;
+	final_memory_entries[5].base_addr = 0x100000;
+	final_memory_entries[5].length = 0xE00000;
+	final_memory_entries[5].type = MEMORY_AVAILABLE;
+	final_memory_entries[6].base_addr =  0xF00000;
+	final_memory_entries[6].length = 0x100000;
 	final_memory_entries[6].type = MEMORY_RESERVED;
-	final_memory_entries[7].base_addr = 0xC0000;
-	final_memory_entries[7].length = 0x8000;
-	final_memory_entries[7].type = MEMORY_RESERVED;
-	final_memory_entries[8].base_addr = 0xC8000;
-	final_memory_entries[8].length = 0x28000;
-	final_memory_entries[8].type = MEMORY_RESERVED;
-	final_memory_entries[9].base_addr = 0xF0000;
-	final_memory_entries[9].length = 0x10000;
-	final_memory_entries[9].type = MEMORY_RESERVED;
-	final_memory_entries[10].base_addr = 0x100000;
-	final_memory_entries[10].length = 0xE00000;
-	final_memory_entries[10].type = MEMORY_AVAILABLE;
-	final_memory_entries[11].base_addr =  0xF00000;
-	final_memory_entries[11].length = 0x100000;
-	final_memory_entries[11].type = MEMORY_RESERVED;
-	final_memory_entries[12].base_addr = 0x1000000;
-	final_memory_entries[12].length = boot_info->memory_map_entry[entries_to_remove - 1].length - 0xF00000;
-	final_memory_entries[12].type = MEMORY_AVAILABLE;
-		for (size_t i = entries_to_remove, j = 13; j < final_number_entries && i < boot_info->memory_map_entries; i++, j++) {
+	final_memory_entries[7].base_addr = 0x1000000;
+	final_memory_entries[7].length = boot_info->memory_map_entry[entries_to_remove - 1].length - 0xF00000;
+	final_memory_entries[7].type = MEMORY_AVAILABLE;
+		for (size_t i = entries_to_remove, j = 8; j < final_number_entries && i < boot_info->memory_map_entries; i++, j++) {
 		final_memory_entries[j].base_addr = boot_info->memory_map_entry[i].base_addr;
 		final_memory_entries[j].length = boot_info->memory_map_entry[i].length;
 		final_memory_entries[j].type = boot_info->memory_map_entry[i].type;
