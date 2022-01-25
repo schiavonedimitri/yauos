@@ -256,7 +256,7 @@ void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	/*
 	 * Computing low memory (below 1Mib) map according to https://wiki.osdev.org/Memory_Map_(x86)
 	 * The new number of entries is calculated by removing all the entries below 0x100000 and the entry at 0x100000.
-	 * After this there are 10 new memory entries below 1Mib mark to manually add, and 3 entries for the region above 1Mib to take into account 
+	 * After this there are 5 new memory entries below 1Mib mark to manually add, and 3 entries for the region above 1Mib to take into account 
 	 * the ISA memory hole and the region before and after it.
 	 * It would've been simpler to just set all the memory below 1Mib to reserved...
 	 */
