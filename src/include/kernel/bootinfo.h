@@ -10,8 +10,8 @@
  */
 
 #define MEMORY_RESERVED 0
-#define MEMORY_AVAILABLE 1
-#define MEMORY_UNSPEC 2
+#define MEMORY_RECLAIMABLE 1
+#define MEMORY_AVAILABLE 2
 
 typedef struct karg {
 	char* key;
