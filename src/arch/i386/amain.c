@@ -53,7 +53,6 @@ void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 				kargs[i].key = NULL;
 				kargs[i].value = NULL;
 			}
-			bool o_break = 0;
 			bool is_key = 1;
 			size_t key_size = 0;
 			size_t value_size = 0;
@@ -75,13 +74,9 @@ void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 						if (kargs[i].key != NULL) {
 							if (strcmp(kargs[i].key, key) == 0) {
 								panic("[KERNEL]: Command line has multiple definitions for the same key!\n");
-								o_break = 1;
 								break;
 							}
 						}
-					}
-					if (o_break) {
-						break;
 					}
 					kargs[j].key = key;
 					key_size = 0;
