@@ -14,25 +14,11 @@ extern void gdt_init();
 extern size_t bootconsole_mem_get_number_buffered_items();
 extern void bootconsole_mem_flush_buffer(char*);
 extern void kmain(bootinfo_t*);
+bootinfo_t *boot_info;
 
-/*
- * This is the kernel architecture specific entry point after the early boot code.
- * Here the first steps of initialization are done: architecture specific initialization (GDT, IDT, etc...), reading the memory map and formatting it in the kernel expected way,
- * initialization of the early boot console, etc...
- */
-
-void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
-	gdt_init();
-	bootconsole_init(BOOTCONSOLE_MEM);
-	printk("[KERNEL]: Initialized memory buffered boot console.\n");
-	bootinfo_t *boot_info = (bootinfo_t*) bmalloc(sizeof(bootinfo_t));
-	boot_info->address_space_size = 0xFFFFFFFF;
+static void parse_cmdline(multiboot2_information_header_t *m_boot2_info) {
 	boot_info->karg_entries = 0;
 	boot_info->karg_entry = NULL;
-	if (!boot_info) {
-		panic("[KERNEL]: Failed to allocate memory for boot_info!\n");
-	}
-	//TODO: split this mess into functions and clean up the code.
 	multiboot2_tag_header_t *tag;
 	for (tag = (multiboot2_tag_header_t*) ((uintptr_t) (m_boot2_info) + 8); tag->type != MULTIBOOT2_TAG_END_TYPE;) {
 		//TODO: Better handle corner cases for the kernel command line errors.
@@ -103,7 +89,81 @@ void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 		}
 		tag = ALIGN((multiboot2_tag_header_t*) ((uintptr_t) (tag) + tag->size), 8);
 	}
-	// Parse the kernel command line to know which if any bootconsole to use.
+}
+
+static void parse_memory_map(multiboot2_information_header_t *m_boot2_info) {
+	multiboot2_tag_header_t *tag;
+	/*
+	 * Copy the memory map provided by the bootloader to the kernel bootinfo structure.
+	 * Note: this kernel does not support real mode applications or vm86 tasks, so memory 
+	 * starting at 0x0 (if it is reported to exist) is freely used.
+	 * Note 2: Since this is a hobby educational project mainly used to learn by doing
+	 * not all possible scenarios have been covered and some assumptions that simplify coding have been made.
+	 * One of these assumptions is that the firmware provides a sane memory map.
+	 * This code has been run mainly on Qemu and it's memory map looks sane enough.
+	 * This code has also been tested this on some real machines (mainly 64 bit systems with UEFI-CSM) and the memory
+	 * maps there have also been confirmed to be sane enough. 
+	 */
+	for (tag = (multiboot2_tag_header_t*) ((uintptr_t) (m_boot2_info) + 8); tag->type != MULTIBOOT2_TAG_END_TYPE;) {
+		if (tag->type == MULTIBOOT2_TAG_MEMORY_MAP_TYPE) {
+			multiboot2_tag_memory_map_t *memory_map = (multiboot2_tag_memory_map_t*) tag;
+			multiboot2_tag_memory_map_entry_t *entry = (multiboot2_tag_memory_map_entry_t*) memory_map->entries;
+			size_t number_entries = (memory_map->size - 16) / memory_map->entry_size;
+			/* 
+			 * This kernel does not support PAE so we skip entries above 0xFFFFFFFF. If we add the 3Gb memory hole
+			 * this means that on this architecture the maximum usable ram is limited to 3Gb because any ram pushed 
+			 * above 0xFFFFFFFF is not addressable.
+			 * The calculation of the index below is done to allocate only the number of entries we want.
+			 */
+			size_t number_entries_final = 0;
+			for (size_t i = 0; i < number_entries; i++) {
+				if (entry[i].base_addr > 0xFFFFFFFF) {
+					break;
+				}
+				number_entries_final++;
+			}
+			boot_info->memory_map_entries = number_entries_final;
+			memory_entry_t *memory = (memory_entry_t*) bmalloc(sizeof(memory_entry_t) * number_entries_final);
+			if (!memory) {
+				panic("Failed to allocate memory for memory!\n");
+			}
+			// Copy only the entries below 0xFFFFFFFF.
+			for (size_t i = 0; i < number_entries; i++) {
+				// This is because we don't know if entries in the map are sorted (usually they are but cannot be sure about it).
+				if (entry[i].base_addr > 0xFFFFFFFF) {
+					continue;
+				}
+				if (entry[i].type == MULTIBOOT2_MEMORY_AVAILABLE) {
+					boot_info->memory_size += entry[i].length;
+					memory[i].type = MEMORY_AVAILABLE;
+				}
+				else if (entry[i].type == MULTIBOOT2_MEMORY_ACPI_RECLAIMABLE) {
+					boot_info->memory_size += entry[i].length;
+					memory[i].type = MEMORY_RECLAIMABLE;
+				}
+				else {
+					memory[i].type = MEMORY_RESERVED;
+				}	
+				memory[i].base_addr = entry[i].base_addr;
+				memory[i].length = entry[i].length;		
+			}
+			boot_info->memory_map_entry = memory;
+			break;		
+		}			
+		tag = ALIGN((multiboot2_tag_header_t*) ((uintptr_t) (tag) + tag->size), 8);
+	}
+}
+
+/*
+ * This routine parses the kernel command line that has been made for the upper level kernel to check if 
+ * any bootconsole=xxx parameter has been specified in the command line and try to initialize that bootconsole.
+ * If nothing is specified the kernel fallbacks to the serial implementation and if that fails too it fallbacks to 
+ * the vga implementation. The code assumes the presence of the standard vga text mode on the target platform (i386-pc).
+ * Note: the makefile by default is set to use serial bootconsole. If you try to run on real hardware remember to set
+ * that parameter to vga or ensure to have a serial connection working.
+ */
+
+static void boot_console_init() {
 	if (boot_info->karg_entries != 0) {
 		for (size_t i = 0; i < boot_info->karg_entries; i++) {
 			if (boot_info->karg_entry[i].key != NULL && strcmp(boot_info->karg_entry[i].key, "bootconsole") == 0) {
@@ -189,39 +249,35 @@ void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 		bootconsole_put_string(buf, bootconsole_mem_get_number_buffered_items());
 		printk("[KERNEL]: Initialized serial boot console.\n");
 	}
-	// If the kernel wasn't loaded by a multiboot2 compliant bootloader fail as we rely on the provided memory map on this architecture.
+}
+
+/*
+ * This is the kernel architecture specific entry point after the early boot code.
+ * Here the first steps of initialization are done: architecture specific initialization (GDT, IDT, etc...), reading the memory map and formatting it in the kernel expected way,
+ * initialization of the early boot console, etc...
+ */
+
+void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
+	// Setup GDT
+	gdt_init();
+	// Setup initial bootconsole device to the memory ringbuffer for early output.
+	bootconsole_init(BOOTCONSOLE_MEM);
+	printk("[KERNEL]: Initialized memory buffered boot console.\n");
+	boot_info = (bootinfo_t*) bmalloc(sizeof(bootinfo_t));
+	if (!boot_info) {
+		panic("[KERNEL]: Failed to allocate memory for boot_info!\n");
+	}
+	boot_info->address_space_size = 0xFFFFFFFF;
+	boot_info->memory_size = 0;
+	// Parse the kernel command line and format it for easier access to the upper kernel layer.
+	parse_cmdline(m_boot2_info);
+	// Initialize the real bootconsole according to kernel command line or defaults.
+	boot_console_init();
+	// Parse the multiboot2 memory map and format it according to the way the upper kernel layer expects it.
+	parse_memory_map(m_boot2_info);	
+	// If the kernel wasn't loaded by a multiboot2 compliant bootloader fail as we rely on the provided memory map.
 	if (magic != MULTIBOOT2_MAGIC) {
 		panic("[KERNEL]: This version of the kernel for the i386 architecture needs to be loaded by a Multiboot2 compliant bootloader!\n");
-	}
-	// Copy the memory map provided by the bootloader to the kernel bootinfo structure.
-	for (tag = (multiboot2_tag_header_t*) ((uintptr_t) (m_boot2_info) + 8); tag->type != MULTIBOOT2_TAG_END_TYPE;) {
-		if (tag->type == MULTIBOOT2_TAG_MEMORY_MAP_TYPE) {
-			multiboot2_tag_memory_map_t *memory_map = (multiboot2_tag_memory_map_t*) tag;
-			multiboot2_tag_memory_map_entry_t *entry = (multiboot2_tag_memory_map_entry_t*) memory_map->entries;
-			size_t number_entries = (memory_map->size - 16) / memory_map->entry_size;
-			boot_info->memory_map_entries = number_entries;
-			memory_entry_t *memory = (memory_entry_t*) bmalloc(sizeof(memory_entry_t) * number_entries);
-			if (!memory) {
-				panic("Failed to allocate memory for memory!\n");
-			}
-			for (size_t i = 0; i < number_entries; i++) {
-				if (entry[i].type == MULTIBOOT2_MEMORY_AVAILABLE) {
-					boot_info->memory_size += entry[i].length;
-					memory[i].type = MEMORY_AVAILABLE;
-				}
-				else if (entry[i].type == MULTIBOOT2_MEMORY_ACPI_RECLAIMABLE) {
-					memory[i].type = MEMORY_RECLAIMABLE;
-				}
-				else {
-					memory[i].type = MEMORY_RESERVED;
-				}	
-				memory[i].base_addr = entry[i].base_addr;
-				memory[i].length = entry[i].length;			
-			}
-			boot_info->memory_map_entry = memory;
-			break;		
-		}			
-		tag = ALIGN((multiboot2_tag_header_t*) ((uintptr_t) (tag) + tag->size), 8);
 	}
 	kmain(boot_info);
 }
