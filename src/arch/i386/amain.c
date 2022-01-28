@@ -29,16 +29,25 @@ static void parse_cmdline(multiboot2_information_header_t *m_boot2_info) {
 				break;
 			}
 			for (size_t i = 0; i < cmd_line->size - 8; i++) {
+				// Calculate how much to allocate for the kernel arguments. Args are separated by a space or null character.
 				if (cmd_line->string[i] == ' ' || cmd_line->string[i] == '\0') {
 					n_args++;
 				}
 			}
 			boot_info->karg_entries = n_args;
 			karg_t *kargs = (karg_t*) bmalloc(sizeof(karg_t) * n_args);
+			if (!kargs) {
+				panic("[KERNEL]: Failed to allocate memory for kargs|\n");
+			}
+			// Set all entries as NULL initially.
 			for (size_t i = 0; i < n_args; i++) {
 				kargs[i].key = NULL;
 				kargs[i].value = NULL;
 			}
+			/*
+			 * While looping over the command line string, is_key is 1 until a key is succesfully parsed, then it is set to 0 and
+			 * a value is parsed next. This goes on until a value is being parsed and the NULL character is found.
+			 */
 			bool is_key = 1;
 			size_t key_size = 0;
 			size_t value_size = 0;
@@ -49,13 +58,19 @@ static void parse_cmdline(multiboot2_information_header_t *m_boot2_info) {
 				else {
 					value_size++;
 				}
+				// = is the ending character for a key because we support key value pairs in the format KEY=VAL.
 				if (is_key && (cmd_line->string[i] == '=')) {
 					char *key = (char*) bmalloc(sizeof(char) * key_size);
 					if (!key) {
 						panic("[KERNEL]: Failed to allocate memory for key!\n");
 					}
-					memcpy(key, &cmd_line->string[i - (key_size -1) ], key_size - 1);
+					/*
+					 * key_size takes into account the = character for its size calculation, thus the key is copied
+					 * until key_size - 1 to leave space for the NULL character which replaces the = character.
+					 */
+					memcpy(key, &cmd_line->string[i - (key_size - 1) ], key_size - 1);
 					key[key_size] = '\0';
+					// Check if this key already exists and panic in case it does. Keys should be unique.
 					for (size_t i = 0; i < n_args; i++) {
 						if (kargs[i].key != NULL) {
 							if (strcmp(kargs[i].key, key) == 0) {
@@ -65,9 +80,12 @@ static void parse_cmdline(multiboot2_information_header_t *m_boot2_info) {
 						}
 					}
 					kargs[j].key = key;
+					// Reset key size for the next parse
 					key_size = 0;
+					// Indicates the start of a value parse.
 					is_key = 0;
 				}
+				// The same as above but for a value. We expect a space or a NULL character after a key.
 				if (!is_key && (cmd_line->string[i] == ' ' || cmd_line->string[i] == '\0')) {
 					char *value = (char*) bmalloc(sizeof(char) * value_size);
 					if (!value) {
@@ -77,16 +95,21 @@ static void parse_cmdline(multiboot2_information_header_t *m_boot2_info) {
 					value[value_size] = '\0';
 					kargs[j].value = value;
 					j++;
+					// Reset value size for the next parse.
 					value_size = 0;
+					// Indicates a new key parse.
 					is_key = 1;
+					// If a NULL character is found while parsing a value it means we are at the end of the command line.
 					if (cmd_line->string[i] == '\0') {
 						break;
 					}
 				}
 			}
+			// Set the parsed entries in the bootinfo structure.
 			boot_info->karg_entry = kargs;
 			break;
 		}
+		// Multiboot2 tags are 8 byte aligned. See multiboo2.h for more info.
 		tag = ALIGN((multiboot2_tag_header_t*) ((uintptr_t) (tag) + tag->size), 8);
 	}
 }

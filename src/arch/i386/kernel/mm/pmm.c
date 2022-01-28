@@ -47,7 +47,7 @@ static void print_memory_map(bootinfo_t *boot_info) {
 
 /*
  * This routine is used to mark a region of the physical address space as reserved or free to use.
- * 2 helping macros are defined in "pmm.h" that call this routine with the appropriate parameters.
+ * 2 helping macros are defined in <arch/kernel/pmm.h> that call this routine with the appropriate parameters.
  */
 static void set_region(phys_addr_t start_addr, size_t size, bool reserve) {
 	size_t region_in_blocks;
@@ -141,6 +141,10 @@ void pmm_init(bootinfo_t *boot_info) {
 	reserve_region(VIRTUAL_TO_PHYSICAL(pmm_bitmap), pmm_size);
 	printk("[KERNEL]: Initialized physical memory\n[KERNEL]: Block size: %d bytes\n[KERNEL]: Usable blocks: %d\n[KERNEL]: Free blocks: %d\n[KERNEL]: Reserved blocks: %d\n[KERNEL]: Total usable memory: %dMb\n[KERNEL]: Total available memory: %dMb\n", BLOCK_SIZE, pmm_total_usable_blocks, pmm_total_usable_blocks - pmm_reserved_blocks, pmm_reserved_blocks, (pmm_total_usable_blocks - pmm_reserved_blocks) * BLOCK_SIZE / (1024 * 1024), boot_info->memory_size / (1024 * 1024));
 }
+
+/* 
+ * These routines are exported to the upper kernel layers and implement the interface at <kernel/pmm.h>
+ */
 
 phys_addr_t get_free_frame() {
 	if ((ssize_t) (pmm_total_usable_blocks - pmm_used_blocks) <= 0) {
