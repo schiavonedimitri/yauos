@@ -129,8 +129,12 @@ static void parse_memory_map(multiboot2_information_header_t *m_boot2_info) {
 			}
 			// Copy only the entries below 0xFFFFFFFF.
 			for (size_t i = 0; i < number_entries; i++) {
-				// This is because we don't know if entries in the map are sorted (usually they are but cannot be sure about it).
+				/* 
+				 * This is because we don't know if entries in the map are in sorted order and to 
+				 * display the user all available memory even if it cannot be used. (usually they are but cannot be sure about it).
+				 */
 				if (entry[i].base_addr > 0xFFFFFFFF) {
+					boot_info->memory_size += entry[i].length;
 					continue;
 				}
 				if (entry[i].type == MULTIBOOT2_MEMORY_AVAILABLE) {
@@ -258,6 +262,7 @@ static void boot_console_init() {
  */
 
 void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
+	extern void pmm_init(bootinfo_t*);
 	// Setup GDT
 	gdt_init();
 	// Setup initial bootconsole device to the memory ringbuffer for early output.
@@ -275,6 +280,7 @@ void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	boot_console_init();
 	// Parse the multiboot2 memory map and format it according to the way the upper kernel layer expects it.
 	parse_memory_map(m_boot2_info);	
+	pmm_init(boot_info);
 	// If the kernel wasn't loaded by a multiboot2 compliant bootloader fail as we rely on the provided memory map.
 	if (magic != MULTIBOOT2_MAGIC) {
 		panic("[KERNEL]: This version of the kernel for the i386 architecture needs to be loaded by a Multiboot2 compliant bootloader!\n");

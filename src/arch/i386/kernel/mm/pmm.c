@@ -5,11 +5,11 @@
 #include <arch/arch.h>
 #include <arch/mmu.h>
 #include <arch/types.h>
+#include <arch/kernel/pmm.h>
 #include <kernel/bootinfo.h>
 #include <kernel/printk.h>
 #include <lib/bitmap.h>
 #include <lib/string.h>
-#include "pmm.h"
 
 static phys_addr_t k_start = VIRTUAL_TO_PHYSICAL(&_KERNEL_START_);
 static phys_addr_t k_end = VIRTUAL_TO_PHYSICAL(&_KERNEL_END_);
@@ -142,7 +142,7 @@ void pmm_init(bootinfo_t *boot_info) {
 	printk("[KERNEL]: Initialized physical memory\n[KERNEL]: Block size: %d bytes\n[KERNEL]: Usable blocks: %d\n[KERNEL]: Free blocks: %d\n[KERNEL]: Reserved blocks: %d\n[KERNEL]: Total usable memory: %dMb\n[KERNEL]: Total available memory: %dMb\n", BLOCK_SIZE, pmm_total_usable_blocks, pmm_total_usable_blocks - pmm_reserved_blocks, pmm_reserved_blocks, (pmm_total_usable_blocks - pmm_reserved_blocks) * BLOCK_SIZE / (1024 * 1024), boot_info->memory_size / (1024 * 1024));
 }
 
-phys_addr_t pmm_get_free_frame() {
+phys_addr_t get_free_frame() {
 	if ((ssize_t) (pmm_total_usable_blocks - pmm_used_blocks) <= 0) {
 		return (phys_addr_t) -1;
 	}
@@ -155,7 +155,7 @@ phys_addr_t pmm_get_free_frame() {
 	return (phys_addr_t) (BLOCK_SIZE * index);
 }
 
-void pmm_free_frame(phys_addr_t addr) {
+void free_frame(phys_addr_t addr) {
 	int index = addr / BLOCK_SIZE;
 	bitmap_unset(pmm_bitmap, index);
 	pmm_used_blocks--;
