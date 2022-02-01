@@ -7,7 +7,12 @@
 #include <kernel/printk.h>
 #include <lib/string.h>
 
+/*
+ * This routine prints an unsigned integer of 32 bits by converting it into its ASCII representation.
+ * The basic formula to get the ascii value from the integer value is: value % base + '0'.
+ */
 static void print_int_u32(uint32_t value, uint8_t base) {
+	// If the number si just one digit print it and return.
 	if (value == 0) {
 		if (bootconsole_is_enabled()) {
 			bootconsole_put_char((value % base) + '0');
@@ -15,23 +20,27 @@ static void print_int_u32(uint32_t value, uint8_t base) {
 		return;
 	}
 	size_t size = 0;
-	size_t tmp_size;
 	uint32_t tmp = value;
+	// Calculate the size for the buffer to hold the ASCII string of the number.
 	while (tmp) {
 		size++;
 		tmp /= base;
 	}
-	tmp_size = size;
+	// Add one for the NULL character.
 	char buf[size + 1];
 	buf[size] = 0;
+	// Fill the created buffer in reverse order.
 	while (value) {
-		buf[--tmp_size] = (value % base) + '0';
+		buf[--size] = (value % base) + '0';
 		value /= base;
 	}
+	// Finally print the ASCII string containing the number.
 	if (bootconsole_is_enabled()) {
 		bootconsole_put_string(&buf[0], strlen(&buf[0]));
 	}
 }
+
+// This routine is the same as the unsigned one except that it checks if the number has a sign and prepends it prior to printing.
 
 static void print_int_32(int32_t value, uint8_t base) {
 	if (value < 0) {
@@ -47,23 +56,23 @@ static void print_int_32(int32_t value, uint8_t base) {
 		return;
 	}
 	size_t size = 0;
-	size_t tmp_size;
 	int32_t tmp = value;
 	while (tmp) {
 		size++;
 		tmp /= base;
 	}
-	tmp_size = size;
 	char buf[size + 1];
 	buf[size] = 0;
 	while (value) {
-		buf[--tmp_size] = (value % base) + '0';
+		buf[--size] = (value % base) + '0';
 		value /= base;
 	}
 	if (bootconsole_is_enabled()) {
 		bootconsole_put_string(&buf[0], strlen(&buf[0]));
 	}
 }
+
+// This routine is equivalent to print_int_u32 but for 64 bits numbers.
 
 static void print_int_u64(uint64_t value, uint8_t base) {
 	if (value == 0) {
@@ -73,23 +82,23 @@ static void print_int_u64(uint64_t value, uint8_t base) {
 		return;
 	}
 	size_t size = 0;
-	size_t tmp_size;
 	uint64_t tmp = value;
 	while (tmp) {
 		size++;
 		tmp /= base;
 	}
-	tmp_size = size;
 	char buf[size + 1];
 	buf[size] = 0;
     while (value) {
-		buf[--tmp_size] = (value % base) + '0';
+		buf[--size] = (value % base) + '0';
 		value /= base;
 	}
 	if (bootconsole_is_enabled()) {
 		bootconsole_put_string(&buf[0], strlen(&buf[0]));
 	}
 }
+
+// This routine is equivalent to print_int_32 but for 64 bit numbers.
 
 static void print_int_64(int64_t value, uint8_t base) {
 	if (value < 0) {
@@ -105,23 +114,27 @@ static void print_int_64(int64_t value, uint8_t base) {
 		return;
 	}
 	size_t size = 0;
-	size_t tmp_size;
 	int64_t tmp = value;
 	while (tmp) {
 		size++;
 		tmp /= base;
 	}
-	tmp_size = size;
 	char buf[size + 1];
 	buf[size] = 0;
     while (value) {
-		buf[--tmp_size] = (value % base) + '0';
+		buf[--size] = (value % base) + '0';
 		value /= base;
 	}
 	if (bootconsole_is_enabled()) {
 		bootconsole_put_string(&buf[0], strlen(&buf[0]));
 	}
 }
+
+/*
+ * This routine prints a 32 bit integer as hexadecimal number.
+ * It works by checking what value of the 32 bit word has each single nibble (4 bits for the not so savy).
+ * Then that value is used as an index into the index array which contains the ASCII value for 0 to F.
+ */
 
 static void print_hex_32(uint32_t value) {
     char index[16] = {
@@ -149,6 +162,7 @@ static void print_hex_32(uint32_t value) {
 	bool first_non_zero = 0;
 	for (size_t i = 0, j = sizeof(uint32_t) * 8 - 4; i < sizeof(uint32_t) * 2; i++, j -= 4) {
 		char c = index[((value & (((uint32_t) 0xF) << j)) >> j)];
+		// This is done for removing any leading zeroes.
 		if (c != '0') {
 			first_non_zero = 1;
 		}
@@ -164,6 +178,8 @@ static void print_hex_32(uint32_t value) {
 			}
 	}
 }
+
+// This routine is equivalent to print_hex_32 but is for 64 bits.
 
 static void print_hex_64(uint64_t value) {
     char index[16] = {
@@ -191,6 +207,7 @@ static void print_hex_64(uint64_t value) {
 	bool first_non_zero = 0;
 	for (size_t i = 0, j = sizeof(uint64_t) * 8 - 4; i < sizeof(uint64_t) * 2; i++, j -= 4) {
 		char c = index[((value & (((uint64_t) 0xF) << j)) >> j)];
+		// This is done for removing any leading zeroes.
 		if (c != '0') {
 			first_non_zero = 1;
 		}
@@ -207,10 +224,19 @@ static void print_hex_64(uint64_t value) {
 	}
 }
 
+/*
+ * This function is not used directly. See printk.h for the definition of appropriate macros to use instead.
+ * This simply scans the format string for known and implemented patterns and calls the appropriate functions
+ * to print the corresponding values. If the format string is just a normal string, it is interpreted as such and 
+ * printed.
+ */
+
 void _printk(bool panic, const char* restrict format, ...) {
 	va_list parameters;
 	va_start(parameters, format);
+	// While format is not a NULL character
 	while (*format) {
+		// This first case handles printing the format string from the first character up to % excluded as a normal string.
 		if (format[0] != '%' || format[1] == '%') {
 			if (format[0] == '%') {
 				format++;
@@ -225,6 +251,7 @@ void _printk(bool panic, const char* restrict format, ...) {
 			format += amount;
 			continue;
 		}
+		// Save the position after the % character in case it isn't one of those below (meeaning it's not implemented).
 		const char *format_begun_at = format++;
 		if (*format == 'c') {
 			format++;
@@ -280,6 +307,7 @@ void _printk(bool panic, const char* restrict format, ...) {
 				bootconsole_put_string(str, strlen(str));
 			}
 		}
+		// Print the string or character after the '%' character because it wasn't found above.
 		else {
 			format = format_begun_at;
             size_t len = strlen(format);
@@ -290,6 +318,7 @@ void _printk(bool panic, const char* restrict format, ...) {
 		}
 	}
 	va_end(parameters);
+	// This implements the panic() macro like function to print additional information about the error and halt the machine.
 	if(panic) {
 		if (bootconsole_is_enabled()) {
 			bootconsole_put_string(" File: ", strlen(" File: "));
