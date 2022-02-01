@@ -37,7 +37,7 @@ static void parse_cmdline(multiboot2_information_header_t *m_boot2_info) {
 			boot_info->karg_entries = n_args;
 			karg_t *kargs = (karg_t*) bmalloc(sizeof(karg_t) * n_args);
 			if (!kargs) {
-				panic("[KERNEL]: Failed to allocate memory for kargs|\n");
+				panic("[KERNEL]: Failed to allocate memory!");
 			}
 			// Set all entries as NULL initially.
 			for (size_t i = 0; i < n_args; i++) {
@@ -62,7 +62,7 @@ static void parse_cmdline(multiboot2_information_header_t *m_boot2_info) {
 				if (is_key && (cmd_line->string[i] == '=')) {
 					char *key = (char*) bmalloc(sizeof(char) * key_size);
 					if (!key) {
-						panic("[KERNEL]: Failed to allocate memory for key!\n");
+						panic("[KERNEL]: Failed to allocate memory!");
 					}
 					/*
 					 * key_size takes into account the = character for its size calculation, thus the key is copied
@@ -74,7 +74,7 @@ static void parse_cmdline(multiboot2_information_header_t *m_boot2_info) {
 					for (size_t i = 0; i < n_args; i++) {
 						if (kargs[i].key != NULL) {
 							if (strcmp(kargs[i].key, key) == 0) {
-								panic("[KERNEL]: Command line has multiple definitions for the same key!\n");
+								panic("[KERNEL]: Command line has multiple definitions for the same key!");
 								break;
 							}
 						}
@@ -89,7 +89,7 @@ static void parse_cmdline(multiboot2_information_header_t *m_boot2_info) {
 				if (!is_key && (cmd_line->string[i] == ' ' || cmd_line->string[i] == '\0')) {
 					char *value = (char*) bmalloc(sizeof(char) * value_size);
 					if (!value) {
-						panic("[KERNEL]: Failed to allocate memory for value!\n");
+						panic("[KERNEL]: Failed to allocate memory!");
 					}
 					memcpy(value, &cmd_line->string[i - (value_size - 1)], value_size - 1);
 					value[value_size] = '\0';
@@ -148,7 +148,7 @@ static void parse_memory_map(multiboot2_information_header_t *m_boot2_info) {
 			boot_info->memory_map_entries = number_entries_final;
 			memory_entry_t *memory = (memory_entry_t*) bmalloc(sizeof(memory_entry_t) * number_entries_final);
 			if (!memory) {
-				panic("Failed to allocate memory for memory!\n");
+				panic("Failed to allocate memory!");
 			}
 			// Copy only the entries below 0xFFFFFFFF.
 			for (size_t i = 0; i < number_entries; i++) {
@@ -199,7 +199,7 @@ static void boot_console_init() {
 					printk("[KERNEL]: Switching boot console.\n[KERNEL]: Initializing serial boot console.\n");
 					char *buf = (char*) bmalloc(sizeof(char) * bootconsole_mem_get_number_buffered_items());
 					if (!buf) {
-						panic("[KERNEL]: Failed to allocate memory for buf.\n");
+						panic("[KERNEL]: Failed to allocate memory!");
 					}
 					bootconsole_mem_flush_buffer(buf);
 					if(!bootconsole_init(BOOTCONSOLE_SERIAL)) {
@@ -209,7 +209,7 @@ static void boot_console_init() {
 						printk("[KERNEL]: Failed to initialize serial bootconsole, falling back to vga text mode.\n[KERNEL]: initializing vga text mode boot console.\n");
 						buf = (char*) bmalloc(sizeof(char) * bootconsole_mem_get_number_buffered_items());
 						if (!buf) {
-							panic("[KERNEL]: Failed to allocate memory for buf.\n");
+							panic("[KERNEL]: Failed to allocate memory!");
 						}
 						bootconsole_mem_flush_buffer(buf);
 						bootconsole_init(BOOTCONSOLE_VGA_TEXT_MODE);
@@ -227,7 +227,7 @@ static void boot_console_init() {
 					printk("[KERNEL]: Switching boot console.\n[KERNEL]: Initializing vga text mode boot console.\n");
 					char *buf = (char*) bmalloc(sizeof(char) * bootconsole_mem_get_number_buffered_items());
 					if (!buf) {
-						panic("[KERNEL]: Failed to allocated memory for buf!\n");
+						panic("[KERNEL]: Failed to allocated memory!\n");
 					}
 					bootconsole_mem_flush_buffer(buf);
 					bootconsole_init(BOOTCONSOLE_VGA_TEXT_MODE);
@@ -240,7 +240,7 @@ static void boot_console_init() {
 					printk("[KERNEL]: No boot console specified in command line, defaulting to serial boot console.\n[KERNEL]: Initializing serial boot console.\n");
 					char *buf = (char*) bmalloc(sizeof(char) * bootconsole_mem_get_number_buffered_items());
 					if (!buf) {
-						panic("[KERNEL]: Failed to allocated memory for buf!\n");
+						panic("[KERNEL]: Failed to allocated memory!\n");
 					}
 					bootconsole_mem_flush_buffer(buf);
 					bootconsole_init(BOOTCONSOLE_SERIAL);
@@ -254,7 +254,7 @@ static void boot_console_init() {
 				printk("[KERNEL]: No parameters specified in kernel command line, defaulting to serial boot console.\n[KERNEL]: Initializing serial boot console.\n");
 				char *buf = (char*) bmalloc(sizeof(char) * bootconsole_mem_get_number_buffered_items());
 				if (!buf) {
-					panic("[KERNEL]: Failed to allocated memory for buf.\n");
+					panic("[KERNEL]: Failed to allocated memory.\n");
 				}
 				bootconsole_mem_flush_buffer(buf);
 				bootconsole_init(BOOTCONSOLE_SERIAL);
@@ -269,7 +269,7 @@ static void boot_console_init() {
 		printk("[KERNEL]: No parameters specified in kernel command line, defaulting to serial boot console.\n[KERNEL]: Initializing serial boot console.\n");
 		char *buf = (char*) bmalloc(sizeof(char) * bootconsole_mem_get_number_buffered_items());
 		if (!buf) {
-			panic("[KERNEL]: Failed to allocated memory for buf.\n");
+			panic("[KERNEL]: Failed to allocated memory!\n");
 		}
 		bootconsole_mem_flush_buffer(buf);
 		bootconsole_init(BOOTCONSOLE_SERIAL);
@@ -284,7 +284,7 @@ static void boot_console_init() {
  * initialization of the early boot console, etc...
  */
 
-void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
+void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	extern void pmm_init(bootinfo_t*);
 	// Setup GDT
 	gdt_init();
@@ -293,7 +293,7 @@ void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	printk("[KERNEL]: Initialized memory buffered boot console.\n");
 	boot_info = (bootinfo_t*) bmalloc(sizeof(bootinfo_t));
 	if (!boot_info) {
-		panic("[KERNEL]: Failed to allocate memory for boot_info!\n");
+		panic("[KERNEL]: Failed to allocate memory!\n");
 	}
 	boot_info->address_space_size = 0xFFFFFFFF;
 	boot_info->memory_size = 0;
@@ -306,7 +306,7 @@ void amain(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	pmm_init(boot_info);
 	// If the kernel wasn't loaded by a multiboot2 compliant bootloader fail as we rely on the provided memory map.
 	if (magic != MULTIBOOT2_MAGIC) {
-		panic("[KERNEL]: This version of the kernel for the i386 architecture needs to be loaded by a Multiboot2 compliant bootloader!\n");
+		panic("[KERNEL]: This kernel must be loaded by a Multiboot2 compliant bootloader!");
 	}
 	kmain(boot_info);
 }

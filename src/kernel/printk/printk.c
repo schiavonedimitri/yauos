@@ -291,6 +291,15 @@ void _printk(bool panic, const char* restrict format, ...) {
 	}
 	va_end(parameters);
 	if(panic) {
+		if (bootconsole_is_enabled()) {
+			bootconsole_put_string(" File: ", strlen(" File: "));
+			bootconsole_put_string(__FILENAME__, strlen(__FILENAME__));
+			bootconsole_put_string(" Line: ", strlen(" Line: "));
+			print_int_u32(__LINE__, 10);
+			bootconsole_put_string(" Function: ", strlen(" Function: "));
+			bootconsole_put_string(__func__, strlen(__func__));
+			bootconsole_put_char('\n');
+		}
 		arch_halt();
 	}
 }

@@ -121,7 +121,7 @@ void pmm_init(bootinfo_t *boot_info) {
 		}
 	}
 	if (ptr == (void*) -1) {
-		panic("[KERNEL]: Failed to allocate memory for pmm bitmap!\n");
+		panic("[KERNEL]: Failed to allocate memory!");
 	}
 	/*
 	 * PHYSICAL_TO_VIRTUAL is needed because we are working with physical frames but to access them we need their virtual addresses.

@@ -161,7 +161,7 @@
 		pushl %ebx
 		pushl %eax
 		# architecture entry point
-		call amain
+		call arch_main
 		# If for whatever reason the architecture entry point exits, disable interrupts and halt the machine and spin forever (that is so because as per intel manual
 		# the halt instruction stops the processor until an enabled interrupt (such as SMI or NMI), the BINIT signal, the INIT signal or the
 		# RESET signal is received.

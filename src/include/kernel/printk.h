@@ -2,6 +2,7 @@
 #define PRINTK_H
 
 #include <stdbool.h>
+#include <kernel/assert.h>
 
 void _printk(bool, const char* __restrict, ...);
 
