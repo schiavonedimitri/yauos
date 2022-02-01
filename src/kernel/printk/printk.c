@@ -22,7 +22,7 @@ static void print_int_u32(uint32_t value, uint8_t base) {
 		tmp /= base;
 	}
 	tmp_size = size;
-	char buf[size];
+	char buf[size + 1];
 	buf[size] = 0;
 	while (value) {
 		buf[--tmp_size] = (value % base) + '0';
@@ -54,7 +54,7 @@ static void print_int_32(int32_t value, uint8_t base) {
 		tmp /= base;
 	}
 	tmp_size = size;
-	char buf[size];
+	char buf[size + 1];
 	buf[size] = 0;
 	while (value) {
 		buf[--tmp_size] = (value % base) + '0';
@@ -80,7 +80,7 @@ static void print_int_u64(uint64_t value, uint8_t base) {
 		tmp /= base;
 	}
 	tmp_size = size;
-	char buf[size];
+	char buf[size + 1];
 	buf[size] = 0;
     while (value) {
 		buf[--tmp_size] = (value % base) + '0';
@@ -112,7 +112,7 @@ static void print_int_64(int64_t value, uint8_t base) {
 		tmp /= base;
 	}
 	tmp_size = size;
-	char buf[size];
+	char buf[size + 1];
 	buf[size] = 0;
     while (value) {
 		buf[--tmp_size] = (value % base) + '0';
