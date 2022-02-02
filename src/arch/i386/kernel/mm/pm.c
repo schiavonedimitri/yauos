@@ -5,7 +5,7 @@
 #include <arch/arch.h>
 #include <arch/mmu.h>
 #include <arch/types.h>
-#include <arch/kernel/pmm.h>
+#include <arch/kernel/pm.h>
 #include <kernel/bootinfo.h>
 #include <kernel/printk.h>
 #include <lib/bitmap.h>
@@ -13,16 +13,16 @@
 
 static phys_addr_t k_start = VIRTUAL_TO_PHYSICAL(&_KERNEL_START_);
 static phys_addr_t k_end = VIRTUAL_TO_PHYSICAL(&_KERNEL_END_);
-static unsigned long *pmm_bitmap = (unsigned long*) -1;
-static size_t pmm_size = 0;
+static unsigned long *pm_bitmap = (unsigned long*) -1;
+static size_t pm_size = 0;
 // Total blocks are the total for the entire address space.
-static size_t pmm_total_blocks = 0;
+static size_t pm_total_blocks = 0;
 // Blcoks that are marked as free in the memory map.
-static size_t pmm_total_usable_blocks = 0;
+static size_t pm_total_usable_blocks = 0;
 // Blocks used by the kernel and by the frame allocator itself for now.
-static size_t pmm_reserved_blocks = 0;
+static size_t pm_reserved_blocks = 0;
 // Accounts for the reserved blocks aswell, since the kernel and the frame allocator themeselves pool into available blocks.
-static size_t pmm_used_blocks = 0;
+static size_t pm_used_blocks = 0;
 
 
 /*
@@ -62,13 +62,13 @@ static void set_region(phys_addr_t start_addr, size_t size, bool reserve) {
 	size_t bit = start_addr / BLOCK_SIZE;
 	for (size_t i = 0; i < region_in_blocks; i++) {
 		if (reserve) {
-			pmm_reserved_blocks++;
-			pmm_used_blocks++;
-			bitmap_set(pmm_bitmap, bit++);
+			pm_reserved_blocks++;
+			pm_used_blocks++;
+			bitmap_set(pm_bitmap, bit++);
 		}
 		else {
-			pmm_total_usable_blocks++;
-			bitmap_unset(pmm_bitmap, bit++);
+			pm_total_usable_blocks++;
+			bitmap_unset(pm_bitmap, bit++);
 		}
 	}
 }
@@ -85,27 +85,27 @@ static void set_region(phys_addr_t start_addr, size_t size, bool reserve) {
 
 void pmm_init(bootinfo_t *boot_info) {
 	print_memory_map(boot_info);
-	pmm_total_blocks = boot_info->address_space_size / BLOCK_SIZE;
+	pm_total_blocks = boot_info->address_space_size / BLOCK_SIZE;
 	if (boot_info->address_space_size % BLOCK_SIZE) {
-		pmm_total_blocks++;
+		pm_total_blocks++;
 	}
-	pmm_size = pmm_total_blocks / 8;
+	pm_size = pm_total_blocks / 8;
 	void *ptr = (void*) -1;
-	if (pmm_total_blocks % 8) {
-		pmm_size++;
+	if (pm_total_blocks % 8) {
+		pm_size++;
 	}
 	for (size_t i = 0; i < boot_info->memory_map_entries; i++) {
 		ptr = (void*) -1;
-		if(boot_info->memory_map_entry[i].length >= pmm_size && boot_info->memory_map_entry[i].type == MEMORY_AVAILABLE) {
+		if(boot_info->memory_map_entry[i].length >= pm_size && boot_info->memory_map_entry[i].type == MEMORY_AVAILABLE) {
 			if (boot_info->memory_map_entry[i].base_addr != (phys_addr_t) k_start) {
 				// Rounding up to the next page boundary because we can only use whole pages.
-				if (PAGE_ROUND_UP((phys_addr_t) (boot_info->memory_map_entry[i].base_addr + pmm_size - 1)) < k_start) {
+				if (PAGE_ROUND_UP((phys_addr_t) (boot_info->memory_map_entry[i].base_addr + pm_size - 1)) < k_start) {
 					ptr = PAGE_ROUND_UP((void*) (phys_addr_t) boot_info->memory_map_entry[i].base_addr);
 					break;
 				}
 				else {
 					// Rounding up to the next page boundary because we can only use whole pages.
-					if (PAGE_ROUND_UP(((phys_addr_t) k_end + pmm_size - 1)) <= (phys_addr_t) (boot_info->memory_map_entry[i].base_addr + boot_info->memory_map_entry[i].length - 1)) {
+					if (PAGE_ROUND_UP(((phys_addr_t) k_end + pm_size - 1)) <= (phys_addr_t) (boot_info->memory_map_entry[i].base_addr + boot_info->memory_map_entry[i].length - 1)) {
 						ptr = PAGE_ROUND_UP((void*) k_end);
 						break;
 					}
@@ -113,7 +113,7 @@ void pmm_init(bootinfo_t *boot_info) {
 			}
 			else {
 				// Rounding up to the next page boundary because we can only use whole pages.
-				if (PAGE_ROUND_UP(((phys_addr_t) k_end + pmm_size - 1)) <= (phys_addr_t) (boot_info->memory_map_entry[i].base_addr + boot_info->memory_map_entry[i].length - 1)) {
+				if (PAGE_ROUND_UP(((phys_addr_t) k_end + pm_size - 1)) <= (phys_addr_t) (boot_info->memory_map_entry[i].base_addr + boot_info->memory_map_entry[i].length - 1)) {
 					ptr = PAGE_ROUND_UP((void*) k_end);
 					break;
 				}
@@ -121,15 +121,15 @@ void pmm_init(bootinfo_t *boot_info) {
 		}
 	}
 	if (ptr == (void*) -1) {
-		panic("[KERNEL]: Failed to allocate memory!");
+		panic("[KERNEL]: Failed to allocate memory! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 	}
 	/*
 	 * PHYSICAL_TO_VIRTUAL is needed because we are working with physical frames but to access them we need their virtual addresses.
 	 * Early boot code should have mapped enough memory into the virtual address space for this to be accessible.
 	 */
-	pmm_bitmap = (uintptr_t*) PHYSICAL_TO_VIRTUAL(ptr);
+	pm_bitmap = (uintptr_t*) PHYSICAL_TO_VIRTUAL(ptr);
 	// Mark all memory as used initially.
-	memset(pmm_bitmap, 0xFF, pmm_size);
+	memset(pm_bitmap, 0xFF, pm_size);
 	// Free regions marked as free in the memory map.
 	for (size_t i = 0; i < boot_info->memory_map_entries; i++) {
 		if (boot_info->memory_map_entry[i].type == MEMORY_AVAILABLE) {
@@ -138,8 +138,8 @@ void pmm_init(bootinfo_t *boot_info) {
 	}
 	// Reserving kernel memory and bitmap memory because they were freed above, since they belong to the free memory regions.
 	reserve_region(k_start, k_end - k_start);
-	reserve_region(VIRTUAL_TO_PHYSICAL(pmm_bitmap), pmm_size);
-	printk("[KERNEL]: Initialized physical memory\n[KERNEL]: Block size: %d bytes\n[KERNEL]: Usable blocks: %d\n[KERNEL]: Free blocks: %d\n[KERNEL]: Reserved blocks: %d\n[KERNEL]: Total usable memory: %dMb\n[KERNEL]: Total available memory: %dMb\n", BLOCK_SIZE, pmm_total_usable_blocks, pmm_total_usable_blocks - pmm_reserved_blocks, pmm_reserved_blocks, (pmm_total_usable_blocks - pmm_reserved_blocks) * BLOCK_SIZE / (1024 * 1024), boot_info->memory_size / (1024 * 1024));
+	reserve_region(VIRTUAL_TO_PHYSICAL(pm_bitmap), pm_size);
+	printk("[KERNEL]: Initialized physical memory\n[KERNEL]: Block size: %d bytes\n[KERNEL]: Usable blocks: %d\n[KERNEL]: Free blocks: %d\n[KERNEL]: Reserved blocks: %d\n[KERNEL]: Total usable memory: %dMb\n[KERNEL]: Total available memory: %dMb\n", BLOCK_SIZE, pm_total_usable_blocks, pm_total_usable_blocks - pm_reserved_blocks, pm_reserved_blocks, (pm_total_usable_blocks - pm_reserved_blocks) * BLOCK_SIZE / (1024 * 1024), boot_info->memory_size / (1024 * 1024));
 }
 
 /* 
@@ -147,20 +147,20 @@ void pmm_init(bootinfo_t *boot_info) {
  */
 
 phys_addr_t get_free_frame() {
-	if ((ssize_t) (pmm_total_usable_blocks - pmm_used_blocks) <= 0) {
+	if ((ssize_t) (pm_total_usable_blocks - pm_used_blocks) <= 0) {
 		return (phys_addr_t) -1;
 	}
-	int index = bitmap_first_unset(pmm_bitmap, pmm_total_blocks);
+	int index = bitmap_first_unset(pm_bitmap, pm_total_blocks);
 	if (index == -1) {
         return (phys_addr_t) -1;
 	}
-	bitmap_set(pmm_bitmap, index);
-	pmm_used_blocks++;
+	bitmap_set(pm_bitmap, index);
+	pm_used_blocks++;
 	return (phys_addr_t) (BLOCK_SIZE * index);
 }
 
 void free_frame(phys_addr_t addr) {
 	int index = addr / BLOCK_SIZE;
-	bitmap_unset(pmm_bitmap, index);
-	pmm_used_blocks--;
+	bitmap_unset(pm_bitmap, index);
+	pm_used_blocks--;
 }

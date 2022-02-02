@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+// For now this kernel supports only normal 4kb directory entries and no page size extensions.
+
 struct page_directory_entry {
     uint8_t present: 1;
     uint8_t read_write: 1;
