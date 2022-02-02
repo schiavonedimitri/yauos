@@ -45,8 +45,8 @@
 .global bootmem_end
 .type bootmem_end, @object
 
-.global boot_page_table
-.type boot_page_table, @object
+.global kernel_boot_page_table
+.type kernel_boot_page_table, @object
 
 .section .bss
 	# This is going to be an area of EARLY_HEAP_SIZE bytes used for memory allocation early in the boot stage. Among other things it will be used to booststrap the physical memory system itself.
@@ -61,7 +61,7 @@
 	# Location of the first page table (4Kb) that maps the first 4Mb physical addresses starting from 0x00000000.
 	# This memory will be reused in higher layers of the kernel initialization.
 	.align 4096
-	boot_page_table:
+	kernel_boot_page_table:
 		.skip 4096
 	# Initial stack for the kernel.
 	.align 4
@@ -90,7 +90,7 @@
 		# Kernel .text and .rodata sections are mapped read only, while .data and .bss are mapped read/write according to elf.
 		# Note: some mappings will change after the memory map is inspected by the memory management init code.
 		# 1) Map from 0x0 to _KERNEL_TEXT_START_ R/W.
-		movl $VIRTUAL_TO_PHYSICAL(boot_page_table), %edi
+		movl $VIRTUAL_TO_PHYSICAL(kernel_boot_page_table), %edi
 		movl $VIRTUAL_TO_PHYSICAL(_KERNEL_TEXT_START_), %ecx
 		movl $0, %esi
 	1:
@@ -113,7 +113,7 @@
 		jne 1b
 		# Calculate how many pages have been mapped of the 512 we wanted to map.
 		pushl %edi
-		subl $VIRTUAL_TO_PHYSICAL(boot_page_table), %edi
+		subl $VIRTUAL_TO_PHYSICAL(kernel_boot_page_table), %edi
 		shr $2, %edi
 		movl $512, %edx
 		subl %edi, %edx
@@ -130,9 +130,9 @@
 		loop 1b
 		# The first directory entry is needed for identity mapping physical addresses to virtual addresses.
 		# This is needed in order to avoid a triple fault on the instruction that jumps to the virtual addresses after enabling paging (which is still in lower addresses).
-		movl $(VIRTUAL_TO_PHYSICAL(boot_page_table) + 0x3), VIRTUAL_TO_PHYSICAL(kernel_directory)
+		movl $(VIRTUAL_TO_PHYSICAL(kernel_boot_page_table) + 0x3), VIRTUAL_TO_PHYSICAL(kernel_directory)
 		# Actual directory that performs the required mapping to 0xC0000000.
-		movl $(VIRTUAL_TO_PHYSICAL(boot_page_table) + 0x3), VIRTUAL_TO_PHYSICAL(kernel_directory) + 768 * 4
+		movl $(VIRTUAL_TO_PHYSICAL(kernel_boot_page_table) + 0x3), VIRTUAL_TO_PHYSICAL(kernel_directory) + 768 * 4
 		# Recurive directory entry.
 		movl $(VIRTUAL_TO_PHYSICAL(kernel_directory) + 0x3), VIRTUAL_TO_PHYSICAL(kernel_directory) + 1023 * 4
 		movl $(VIRTUAL_TO_PHYSICAL(kernel_directory)), %ecx

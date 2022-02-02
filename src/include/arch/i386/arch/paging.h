@@ -1,5 +1,5 @@
-#ifndef _VMM_H
-#define _VMM_H
+#ifndef _PAGING_H
+#define _PAGING_H
 
 #include <stdint.h>
 
@@ -44,4 +44,4 @@ typedef struct page_table {
     page_table_entry_t entry[1024];
 } page_table_t;
 
-#endif /** _VMM_H */
+#endif /** _PAGING_H */

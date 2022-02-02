@@ -150,7 +150,6 @@ static void parse_memory_map(multiboot2_information_header_t *m_boot2_info) {
 			if (!memory) {
 				panic("Failed to allocate memory! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 			}
-			printk("%d\n", number_entries);
 			// Copy only the entries below 0xFFFFFFFF.
 			for (size_t i = 0; i < number_entries; i++) {
 				/* 
