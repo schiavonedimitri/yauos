@@ -3,7 +3,8 @@
         "stdint-gcc.h": "c",
         "stdint.h": "c",
         "bitmap.h": "c",
-        "bootinfo.h": "c"
+        "bootinfo.h": "c",
+        "kmalloc.h": "c"
     },
     "git.enableCommitSigning": true
 }

@@ -13,7 +13,7 @@
 extern void gdt_init();
 extern size_t bootconsole_mem_get_number_buffered_items();
 extern void bootconsole_mem_flush_buffer(char*);
-extern void kmain(bootinfo_t*);
+extern void kernel_main(bootinfo_t*);
 bootinfo_t *boot_info;
 
 static void parse_cmdline(multiboot2_information_header_t *m_boot2_info) {
@@ -298,7 +298,6 @@ void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	if (!boot_info) {
 		panic("[KERNEL]: Failed to allocate memory! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 	}
-	boot_info->address_space_size = 0xFFFFFFFF;
 	boot_info->memory_size = 0;
 	// Parse the kernel command line and format it for easier access to the upper kernel layer.
 	parse_cmdline(m_boot2_info);
@@ -311,5 +310,5 @@ void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	if (magic != MULTIBOOT2_MAGIC) {
 		panic("[KERNEL]: This kernel must be loaded by a Multiboot2 compliant bootloader! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 	}
-	kmain(boot_info);
+	kernel_main(boot_info);
 }

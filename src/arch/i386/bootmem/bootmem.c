@@ -38,6 +38,7 @@ static void* balloc(size_t bytes) {
 void bfree(void *ap) {
 	Header *bp, *p;
 	bp = (Header*) ap - 1;
+	memset(ap, 0, bp->s.size * sizeof(Header));
 	for (p = freep; !(bp > p && bp < p->s.ptr); p = p->s.ptr) {
 		if (p >= p->s.ptr && (bp > p || bp < p->s.ptr)) {
 			break;
@@ -68,7 +69,7 @@ static Header* morecore(size_t n_units) {
 	}
 	p = balloc(n_units * sizeof(Header));
 	if (p == (void*) -1) {
-		return (Header*) 0;
+		return NULL;
 	}
 	hp = (Header*) p;
 	hp->s.size = n_units;
@@ -103,8 +104,8 @@ void* bmalloc(size_t n_bytes) {
 			return (void*) (p + 1);
 		}
 		if (p == freep) {
-			if((p = morecore(n_units)) == 0) {
-				return (void*) 0;
+			if((p = morecore(n_units)) == NULL) {
+				return NULL;
 			}
 		}
 	}
