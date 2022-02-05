@@ -106,7 +106,7 @@ void pmm_init(bootinfo_t *boot_info) {
 				bitmap_size++;
 			}
 			all_bitmaps_size += bitmap_size;
-			bitmap_list_t *tmp = (bitmap_list_t*) bmalloc(sizeof(bitmap_list_t));
+			bitmap_list_t *tmp = (bitmap_list_t*) b_malloc(sizeof(bitmap_list_t));
 			if (!tmp) {
 				panic("[KERNEL]: Failed to allocate memory! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 			}

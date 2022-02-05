@@ -35,7 +35,7 @@ static void parse_cmdline(multiboot2_information_header_t *m_boot2_info) {
 				}
 			}
 			boot_info->karg_entries = n_args;
-			karg_t *kargs = (karg_t*) bmalloc(sizeof(karg_t) * n_args);
+			karg_t *kargs = (karg_t*) b_malloc(sizeof(karg_t) * n_args);
 			if (!kargs) {
 				panic("[KERNEL]: Failed to allocate memory! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 			}
@@ -60,7 +60,7 @@ static void parse_cmdline(multiboot2_information_header_t *m_boot2_info) {
 				}
 				// = is the ending character for a key because we support key value pairs in the format KEY=VAL.
 				if (is_key && (cmd_line->string[i] == '=')) {
-					char *key = (char*) bmalloc(sizeof(char) * key_size);
+					char *key = (char*) b_malloc(sizeof(char) * key_size);
 					if (!key) {
 						panic("[KERNEL]: Failed to allocate memory! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 					}
@@ -87,7 +87,7 @@ static void parse_cmdline(multiboot2_information_header_t *m_boot2_info) {
 				}
 				// The same as above but for a value. We expect a space or a NULL character after a key.
 				if (!is_key && (cmd_line->string[i] == ' ' || cmd_line->string[i] == '\0')) {
-					char *value = (char*) bmalloc(sizeof(char) * value_size);
+					char *value = (char*) b_malloc(sizeof(char) * value_size);
 					if (!value) {
 						panic("[KERNEL]: Failed to allocate memory! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 					}
@@ -146,7 +146,7 @@ static void parse_memory_map(multiboot2_information_header_t *m_boot2_info) {
 				number_entries_final++;
 			}
 			boot_info->memory_map_entries = number_entries_final;
-			memory_entry_t *memory = (memory_entry_t*) bmalloc(sizeof(memory_entry_t) * number_entries_final);
+			memory_entry_t *memory = (memory_entry_t*) b_malloc(sizeof(memory_entry_t) * number_entries_final);
 			if (!memory) {
 				panic("Failed to allocate memory! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 			}
@@ -200,17 +200,17 @@ static void boot_console_init() {
 				// Serial bootconsole was specified on the command line.
 				if (boot_info->karg_entry[i].value != NULL && strcmp(boot_info->karg_entry[i].value, "serial") == 0) {
 					printk("[KERNEL]: Switching boot console.\n[KERNEL]: Initializing serial boot console.\n");
-					char *buf = (char*) bmalloc(sizeof(char) * bootconsole_mem_get_number_buffered_items());
+					char *buf = (char*) b_malloc(sizeof(char) * bootconsole_mem_get_number_buffered_items());
 					if (!buf) {
 						panic("[KERNEL]: Failed to allocate memory! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 					}
 					bootconsole_mem_flush_buffer(buf);
 					if(!bootconsole_init(BOOTCONSOLE_SERIAL)) {
-						bfree(buf);
+						b_free(buf);
 						// Serial bootconsole failed, switch back to memory ringbuffer to not waste output during switch to vga implementation.
 						bootconsole_init(BOOTCONSOLE_MEM);
 						printk("[KERNEL]: Failed to initialize serial bootconsole, falling back to vga text mode.\n[KERNEL]: initializing vga text mode boot console.\n");
-						buf = (char*) bmalloc(sizeof(char) * bootconsole_mem_get_number_buffered_items());
+						buf = (char*) b_malloc(sizeof(char) * bootconsole_mem_get_number_buffered_items());
 						if (!buf) {
 							panic("[KERNEL]: Failed to allocate memory! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 						}
@@ -228,7 +228,7 @@ static void boot_console_init() {
 				// vga bootconsole was specified on the command line.
 				else if (boot_info->karg_entry[i].value != NULL && strcmp(boot_info->karg_entry[i].value, "vga") == 0) {
 					printk("[KERNEL]: Switching boot console.\n[KERNEL]: Initializing vga text mode boot console.\n");
-					char *buf = (char*) bmalloc(sizeof(char) * bootconsole_mem_get_number_buffered_items());
+					char *buf = (char*) b_malloc(sizeof(char) * bootconsole_mem_get_number_buffered_items());
 					if (!buf) {
 						panic("[KERNEL]: Failed to allocated memory! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 					}
@@ -241,7 +241,7 @@ static void boot_console_init() {
 				// Empty bootconsole value was specified, default to serial.
 				else {
 					printk("[KERNEL]: No boot console specified in command line, defaulting to serial boot console.\n[KERNEL]: Initializing serial boot console.\n");
-					char *buf = (char*) bmalloc(sizeof(char) * bootconsole_mem_get_number_buffered_items());
+					char *buf = (char*) b_malloc(sizeof(char) * bootconsole_mem_get_number_buffered_items());
 					if (!buf) {
 						panic("[KERNEL]: Failed to allocated memory! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 					}
@@ -255,7 +255,7 @@ static void boot_console_init() {
 			// No bootconsole key was found on the command line.
 			else {
 				printk("[KERNEL]: No parameters specified in kernel command line, defaulting to serial boot console.\n[KERNEL]: Initializing serial boot console.\n");
-				char *buf = (char*) bmalloc(sizeof(char) * bootconsole_mem_get_number_buffered_items());
+				char *buf = (char*) b_malloc(sizeof(char) * bootconsole_mem_get_number_buffered_items());
 				if (!buf) {
 					panic("[KERNEL]: Failed to allocated memory! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 				}
@@ -270,7 +270,7 @@ static void boot_console_init() {
 	// Command line is empty, default to serial bootconsole.
 	else {
 		printk("[KERNEL]: No parameters specified in kernel command line, defaulting to serial boot console.\n[KERNEL]: Initializing serial boot console.\n");
-		char *buf = (char*) bmalloc(sizeof(char) * bootconsole_mem_get_number_buffered_items());
+		char *buf = (char*) b_malloc(sizeof(char) * bootconsole_mem_get_number_buffered_items());
 		if (!buf) {
 			panic("[KERNEL]: Failed to allocated memory! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 		}
@@ -294,7 +294,7 @@ void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	// Setup initial bootconsole device to the memory ringbuffer for early output.
 	bootconsole_init(BOOTCONSOLE_MEM);
 	printk("[KERNEL]: Initialized memory buffered boot console.\n");
-	boot_info = (bootinfo_t*) bmalloc(sizeof(bootinfo_t));
+	boot_info = (bootinfo_t*) b_malloc(sizeof(bootinfo_t));
 	if (!boot_info) {
 		panic("[KERNEL]: Failed to allocate memory! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 	}

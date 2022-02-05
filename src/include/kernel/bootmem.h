@@ -4,7 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-void *bmalloc(size_t);
-void bfree(void*);
+void *b_malloc(size_t);
+void *b_zmalloc(size_t);
+void b_free(void*);
 
 #endif /** BOOTMEM_H */

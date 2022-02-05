@@ -4,6 +4,10 @@
 #include <stdint.h>
 #include <arch/types.h>
 
+#ifndef EARLY_HEAP_SIZE
+#define EARLY_HEAP_SIZE 4096
+#endif
+
 /*
  * Used by morecore() to request memory chunks. By default it requests 1Kb chunks per call.
  * Shouldn't be higher than EARLY_HEAP_SIZE / sizeof(Header) or allocations will fail due to the pool being limited to EARLY_HEAP_SIZE bytes.

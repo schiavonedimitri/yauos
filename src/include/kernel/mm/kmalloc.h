@@ -3,8 +3,9 @@
 
 #include <arch/types.h>
 
-// 64Mb of heap size
-#define MAX_HEAP_SIZE 0x4000000
+#ifndef KERNEL_HEAP_SIZE
+#define KERNEL_HEAP_SIZE 0x4000000
+#endif
 
 extern uintptr_t _KERNEL_END_;
 
@@ -18,11 +19,12 @@ typedef union header {
 	Align x;
 } Header;
 
-#define MORECORE_DEFAULT PAGE_SIZE
+// This is set so that the minimum allocation request to the physical memory manger will be the size of a page which is the natural allocation size of the system.
+#define MORECORE_DEFAULT PAGE_SIZE / sizeof(Header)
 
-ssize_t kmalloc_init();
-void* alloc_page();
-void *kmalloc(size_t);
-void kfree(void*);
+ssize_t k_malloc_init();
+void *k_malloc(size_t);
+void *k_zmalloc(size_t);
+void k_free(void*);
 
 #endif /** KMALLOC_H */

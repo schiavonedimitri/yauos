@@ -14,31 +14,30 @@
  * Due to this, the allocator draws from a pool of EARLY_HEAP_SIZE reserved in the kernel .bss section which, instead, is guarenteed.
  * (Because this is an elf kernel, if not enough memory was available for the loader it wouldn't have loaded us).
  * This is mostly used during early stage in the initialization process, before the memory manager is up and running and for aiding at bootstrapping
- * the memory manager itself. A simple watermark allocator could've been used since this memory will be eventually recycled by the real memory manager.
+ * the memory manager itself. A simple watermark allocator could've been used since this memory will never be freed.
  * Nevertheless the convenience of having a free and since the allocator manages such a small memory pool should add little to no overhead for great added functionality.
  */
 
-static void *memory_end = &bootmem_end;
-static void *free_mem_ptr = &bootmem_start;
+static virt_addr_t heap_brk = (virt_addr_t) &bootmem_start;
+static virt_addr_t heap_end = (virt_addr_t) &bootmem_end;
 static Header base;
 static Header *freep;
 
-static void* balloc(size_t bytes) {
-	if (!IS_ALIGNED(free_mem_ptr, alignof(Align))) {
-		free_mem_ptr = (void*) ALIGN(free_mem_ptr, alignof(Align));
+static void* b_sbrk(size_t amount) {
+	if (!IS_ALIGNED(heap_brk, alignof(Align))) {
+		heap_brk = ALIGN(heap_brk, alignof(Align));
 	}
-	if ((uintptr_t) free_mem_ptr + bytes > (uintptr_t) memory_end) {
+	if ((size_t) heap_brk + amount > (size_t) heap_end) {
 		return (void*) -1;
 	}
-	void *mem_ptr = (void*) free_mem_ptr;
-	free_mem_ptr = (void*) (uintptr_t) free_mem_ptr + bytes;
-	return mem_ptr;
+	void*prev_brk = (void*) heap_brk;
+	heap_brk = (virt_addr_t) (size_t) heap_brk + amount;
+	return prev_brk;
 }
 
-void bfree(void *ap) {
+void b_free(void *ap) {
 	Header *bp, *p;
 	bp = (Header*) ap - 1;
-	memset(ap, 0, bp->s.size * sizeof(Header));
 	for (p = freep; !(bp > p && bp < p->s.ptr); p = p->s.ptr) {
 		if (p >= p->s.ptr && (bp > p || bp < p->s.ptr)) {
 			break;
@@ -61,27 +60,23 @@ void bfree(void *ap) {
 	freep = p;
 }
 
-static Header* morecore(size_t n_units) {
+static Header* b_morecore(size_t n_units) {
 	void *p;
 	Header *hp;
 	if (n_units < MORECORE_DEFAULT) {
 		n_units = MORECORE_DEFAULT;
 	}
-	p = balloc(n_units * sizeof(Header));
+	p = b_sbrk(n_units * sizeof(Header));
 	if (p == (void*) -1) {
 		return NULL;
 	}
 	hp = (Header*) p;
 	hp->s.size = n_units;
-	bfree((void*) (hp + 1));
+	b_free((void*) (hp + 1));
 	return freep;
 }
 
-/*
- * Memory allocated is zeroed before being returned to the user.
- */
-
-void* bmalloc(size_t n_bytes) {
+void* b_malloc(size_t n_bytes) {
 	Header *p, *prevp;
 	size_t n_units;
 	n_units = (n_bytes + sizeof(Header) - 1) / sizeof(Header) + 1;
@@ -100,13 +95,21 @@ void* bmalloc(size_t n_bytes) {
 				p->s.size = n_units;
 			}
 			freep = prevp;
-			memset((p + 1), 0, n_bytes);
 			return (void*) (p + 1);
 		}
 		if (p == freep) {
-			if((p = morecore(n_units)) == NULL) {
+			if((p = b_morecore(n_units)) == NULL) {
 				return NULL;
 			}
 		}
 	}
+}
+
+void *b_zmalloc(size_t n_bytes) {
+	void* memory = b_malloc(n_bytes);
+	if (memory != NULL) {
+		memset(memory, 0, n_bytes);
+		return memory;
+	}
+	return NULL;
 }

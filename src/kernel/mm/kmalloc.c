@@ -10,17 +10,28 @@
 #include <kernel/mm/kmalloc.h>
 #include <lib/string.h>
 
-static virt_addr_t heap_start = (virt_addr_t) &_KERNEL_END_;
-static virt_addr_t heap_end;
-static virt_addr_t heap_brk;
+/*
+ * Ad with the bootmem allocator, this is just another K&R allocator that is backed up by the physical memory manager and the virtual memory manager.
+ * This is used for kernel internal use. In the future a buddy allocator and a slab allocator will be added when the other essential structures of the kernel
+ * will be designed and when userspace comes into play.
+ */
+
+static virt_addr_t heap_brk = (virt_addr_t) &_KERNEL_END_;
+static virt_addr_t heap_end = (virt_addr_t) &_KERNEL_END_ + KERNEL_HEAP_SIZE;
 static Header base;
 static Header *freep;
 
-ssize_t kmalloc_init() {
+/*
+ * Initializes the kernel heap system.
+ * For now the heap is a zone of MAX_HEAP_SIZE starting at the kernel end. This initialization code pre-allocates MAX_HEAP_SIZE
+ * from the physical memory manager and maps it to the kernel virtual address space starting at _KERNEL_END_.
+ * Returns 0 on success or -1 in case of failure.
+ */
+ssize_t k_malloc_init() {
     bool failed = false;
     size_t failed_idx = 0;
-    virt_addr_t tmp = heap_start;
-    for (size_t i = 0; i < MAX_HEAP_SIZE / PAGE_SIZE; i++) {
+    virt_addr_t tmp = heap_brk;
+    for (size_t i = 0; i < KERNEL_HEAP_SIZE / PAGE_SIZE; i++) {
         phys_addr_t frame = get_free_frame();
         if (frame != (phys_addr_t) -1) {
             if (map_page(frame, tmp, PROT_KERN | PROT_READ_WRITE)) {
@@ -39,34 +50,42 @@ ssize_t kmalloc_init() {
         }
     }
     if (failed) {
-        virt_addr_t tmp2 = heap_start;
+        virt_addr_t tmp2 = heap_brk;
         for (size_t i = 0; i < failed_idx; i++) {
             unmap_page(tmp2);
             tmp2 += PAGE_SIZE;
         }
         return -1;
     }
-    heap_end = heap_start + MAX_HEAP_SIZE;
-    heap_brk = heap_start;
-	printk("[KERNEL]: heap start: %x\n[KERNEL]: heap end: %x\n", heap_start, heap_end);
-    return 1;
+    return 0;
 }
 
-static void* sbrk(size_t size) {
-    if (heap_brk + size >= heap_end) {
-        return NULL;
-    }
-    else {
-        void* ret = (void*) heap_brk;
-        heap_brk += size;
-        return ret; 
-    }
+/*
+ * Increases the heap break by the requested amount.
+ * Returns -1 in case of failure.
+ */
+
+static void* k_sbrk(size_t amount) {
+	if (!IS_ALIGNED(heap_brk, alignof(Align))) {
+		heap_brk = ALIGN(heap_brk, alignof(Align));
+	}
+	if ((size_t) heap_brk + amount > (size_t) heap_end) {
+		return (void*) -1;
+	}
+	void *prev_brk = (void*) heap_brk;
+	heap_brk = (virt_addr_t) (size_t) heap_brk + amount;
+	return prev_brk;
 }
 
-void kfree(void *ap) {
+/*
+ * Frees the memory pointed by ap.
+ * Does not check for double free or anything else. It is assumed to be correctly used since it is used by the kernel itself and has no interactions
+ * with user space.
+ */
+
+void k_free(void *ap) {
 	Header *bp, *p;
 	bp = (Header*) ap - 1;
-	memset(ap, 0, bp->s.size * sizeof(Header));
 	for (p = freep; !(bp > p && bp < p->s.ptr); p = p->s.ptr) {
 		if (p >= p->s.ptr && (bp > p || bp < p->s.ptr)) {
 			break;
@@ -89,27 +108,31 @@ void kfree(void *ap) {
 	freep = p;
 }
 
-static Header* morecore(size_t n_units) {
+/*
+ * Requests more memory from the bootmem pool.
+ */
+
+static Header* k_morecore(size_t n_units) {
 	void *p;
 	Header *hp;
 	if (n_units < MORECORE_DEFAULT) {
 		n_units = MORECORE_DEFAULT;
 	}
-	p = sbrk(n_units * sizeof(Header));
+	p = k_sbrk(n_units * sizeof(Header));
 	if (p == NULL) {
 		return NULL;
 	}
 	hp = (Header*) p;
 	hp->s.size = n_units;
-	kfree((void*) (hp + 1));
+	k_free((void*) (hp + 1));
 	return freep;
 }
 
 /*
- * Memory allocated is zeroed before being returned to the user.
+ * Returns the starting address of the requested memory.
+ * In case of failure NULL is returned.
  */
-
-void* kmalloc(size_t n_bytes) {
+void* k_malloc(size_t n_bytes) {
 	Header *p, *prevp;
 	size_t n_units;
 	n_units = (n_bytes + sizeof(Header) - 1) / sizeof(Header) + 1;
@@ -128,13 +151,21 @@ void* kmalloc(size_t n_bytes) {
 				p->s.size = n_units;
 			}
 			freep = prevp;
-			memset((p + 1), 0, n_bytes);
 			return (void*) (p + 1);
 		}
 		if (p == freep) {
-			if((p = morecore(n_units)) == NULL) {
+			if((p = k_morecore(n_units)) == NULL) {
 				return NULL;
 			}
 		}
 	}
+}
+
+void *k_zmalloc(size_t n_bytes) {
+	void* memory = k_malloc(n_bytes);
+	if (memory != NULL) {
+		memset(memory, 0, n_bytes);
+		return memory;
+	}
+	return NULL;
 }
