@@ -18,22 +18,31 @@
  * Nevertheless the convenience of having a free and since the allocator manages such a small memory pool should add little to no overhead for great added functionality.
  */
 
+// Heap_brk is initially already aligned to a page boundary in boot.S
 static virt_addr_t heap_brk = (virt_addr_t) &bootmem_start;
 static virt_addr_t heap_end = (virt_addr_t) &bootmem_end;
 static Header base;
 static Header *freep;
 
+/*
+ * Increases the heap break by the requested amount aligned to max_align_t.
+ * Returns -1 in case of failure.
+ */
+
 static void* b_sbrk(size_t amount) {
-	if (!IS_ALIGNED(heap_brk, alignof(Align))) {
-		heap_brk = ALIGN(heap_brk, alignof(Align));
-	}
-	if ((size_t) heap_brk + amount > (size_t) heap_end) {
+	if (ALIGN((size_t) heap_brk + amount, alignof(max_align_t)) > (size_t) heap_end) {
 		return (void*) -1;
 	}
-	void*prev_brk = (void*) heap_brk;
-	heap_brk = (virt_addr_t) (size_t) heap_brk + amount;
+	void *prev_brk = (void*) heap_brk;
+	heap_brk = ALIGN((virt_addr_t) (size_t) heap_brk + amount, alignof(max_align_t));
 	return prev_brk;
 }
+
+/*
+ * Frees the memory pointed by ap.
+ * Does not check for double free or anything else. It is assumed to be correctly used since it is used by the kernel itself and has no interactions
+ * with user space.
+ */
 
 void b_free(void *ap) {
 	Header *bp, *p;
@@ -76,34 +85,49 @@ static Header* b_morecore(size_t n_units) {
 	return freep;
 }
 
+/*
+ * Returns the starting address of the requested memory.
+ * In case of failure NULL is returned.
+ */
+
 void* b_malloc(size_t n_bytes) {
 	Header *p, *prevp;
 	size_t n_units;
+	// Take into account how much bytes we need in case the memory is not aligned.
+	size_t align_units = 0;
 	n_units = (n_bytes + sizeof(Header) - 1) / sizeof(Header) + 1;
 	if ((prevp = freep) == 0) {
 		base.s.ptr = freep = prevp = &base;
 		base.s.size = 0;
 	}
 	for (p = prevp->s.ptr; ; prevp = p, p = p->s.ptr) {
-		if (p->s.size >= n_units) {
-			if (p->s.size == n_units) {
+		// Add how many units more are needed to allocate n_bytes and align to max_align_t.
+		if (!IS_ALIGNED((p + 1), alignof(max_align_t))) {
+			align_units = alignof(max_align_t) / sizeof(Header);
+		}
+		if (p->s.size >= n_units + align_units) {
+			if (p->s.size == n_units + align_units) {
 				prevp->s.ptr = p->s.ptr;
 			}
 			else {
-				p->s.size -= n_units;
+				p->s.size -= n_units + align_units;
 				p += p->s.size;
-				p->s.size = n_units;
+				p->s.size = n_units + align_units;
 			}
 			freep = prevp;
-			return (void*) (p + 1);
+			return (void*) ALIGN((p + 1), alignof(max_align_t));
 		}
 		if (p == freep) {
-			if((p = b_morecore(n_units)) == NULL) {
+			if((p = b_morecore(n_units + align_units)) == NULL) {
 				return NULL;
 			}
 		}
 	}
 }
+
+/*
+ * Same as b_malloc but zores the memory before returning it.
+ */
 
 void *b_zmalloc(size_t n_bytes) {
 	void* memory = b_malloc(n_bytes);

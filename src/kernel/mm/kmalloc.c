@@ -16,18 +16,21 @@
  * will be designed and when userspace comes into play.
  */
 
-static virt_addr_t heap_brk = (virt_addr_t) &_KERNEL_END_;
+static virt_addr_t heap_brk;
 static virt_addr_t heap_end = (virt_addr_t) &_KERNEL_END_ + KERNEL_HEAP_SIZE;
 static Header base;
 static Header *freep;
 
 /*
  * Initializes the kernel heap system.
- * For now the heap is a zone of MAX_HEAP_SIZE starting at the kernel end. This initialization code pre-allocates MAX_HEAP_SIZE
- * from the physical memory manager and maps it to the kernel virtual address space starting at _KERNEL_END_.
+ * For now the heap is a zone of MAX_HEAP_SIZE starting at the first address aligned to max_align_t after the kernel end. 
+ * This initialization code pre-allocates MAX_HEAP_SIZE from the physical memory manager and maps it to the kernel 
+ * virtual address space starting at _KERNEL_END_.
  * Returns 0 on success or -1 in case of failure.
  */
+
 ssize_t k_malloc_init() {
+	heap_brk = (virt_addr_t) PAGE_ROUND_UP(&_KERNEL_END_);
     bool failed = false;
     size_t failed_idx = 0;
     virt_addr_t tmp = heap_brk;
@@ -61,19 +64,16 @@ ssize_t k_malloc_init() {
 }
 
 /*
- * Increases the heap break by the requested amount.
+ * Increases the heap break by the requested amount aligned to max_align_t.
  * Returns -1 in case of failure.
  */
 
 static void* k_sbrk(size_t amount) {
-	if (!IS_ALIGNED(heap_brk, alignof(Align))) {
-		heap_brk = ALIGN(heap_brk, alignof(Align));
-	}
-	if ((size_t) heap_brk + amount > (size_t) heap_end) {
+	if (ALIGN((size_t) heap_brk + amount, alignof(max_align_t)) > (size_t) heap_end) {
 		return (void*) -1;
 	}
 	void *prev_brk = (void*) heap_brk;
-	heap_brk = (virt_addr_t) (size_t) heap_brk + amount;
+	heap_brk = ALIGN((virt_addr_t) (size_t) heap_brk + amount, alignof(max_align_t));
 	return prev_brk;
 }
 
@@ -109,7 +109,7 @@ void k_free(void *ap) {
 }
 
 /*
- * Requests more memory from the bootmem pool.
+ * Requests more memory from the kernel heap pool.
  */
 
 static Header* k_morecore(size_t n_units) {
@@ -119,7 +119,7 @@ static Header* k_morecore(size_t n_units) {
 		n_units = MORECORE_DEFAULT;
 	}
 	p = k_sbrk(n_units * sizeof(Header));
-	if (p == NULL) {
+	if (p == (void*) -1) {
 		return NULL;
 	}
 	hp = (Header*) p;
@@ -132,34 +132,45 @@ static Header* k_morecore(size_t n_units) {
  * Returns the starting address of the requested memory.
  * In case of failure NULL is returned.
  */
+
 void* k_malloc(size_t n_bytes) {
 	Header *p, *prevp;
 	size_t n_units;
+	// Take into account how much bytes we need in case the memory is not aligned.
+	size_t align_units = 0;
 	n_units = (n_bytes + sizeof(Header) - 1) / sizeof(Header) + 1;
 	if ((prevp = freep) == 0) {
 		base.s.ptr = freep = prevp = &base;
 		base.s.size = 0;
 	}
 	for (p = prevp->s.ptr; ; prevp = p, p = p->s.ptr) {
-		if (p->s.size >= n_units) {
-			if (p->s.size == n_units) {
+		// Add how many units more are needed to allocate n_bytes and align to max_align_t.
+		if (!IS_ALIGNED((p + 1), alignof(max_align_t))) {
+			align_units = alignof(max_align_t) / sizeof(Header);
+		}
+		if (p->s.size >= n_units + align_units) {
+			if (p->s.size == n_units + align_units) {
 				prevp->s.ptr = p->s.ptr;
 			}
 			else {
-				p->s.size -= n_units;
+				p->s.size -= n_units + align_units;
 				p += p->s.size;
-				p->s.size = n_units;
+				p->s.size = n_units + align_units;
 			}
 			freep = prevp;
-			return (void*) (p + 1);
+			return (void*) ALIGN((p + 1), alignof(max_align_t));
 		}
 		if (p == freep) {
-			if((p = k_morecore(n_units)) == NULL) {
+			if((p = k_morecore(n_units + align_units)) == NULL) {
 				return NULL;
 			}
 		}
 	}
 }
+
+/*
+ * Same as k_malloc but zores the memory before returning it.
+ */
 
 void *k_zmalloc(size_t n_bytes) {
 	void* memory = k_malloc(n_bytes);
