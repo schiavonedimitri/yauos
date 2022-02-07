@@ -253,7 +253,6 @@ void free_frame(phys_addr_t addr) {
 		panic("[PM]: Could not find address to free! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 	}
 	int index = addr / BLOCK_SIZE - bitmap->first_addr / BLOCK_SIZE;
-	printk("freeing bit: %d of bitmap: %x\n", index, bitmap->first_addr);
 	bitmap_unset(bitmap->bitmap, index);
 	bitmap->used_blocks--;
 	total_used_blocks--;
