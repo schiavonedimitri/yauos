@@ -22,7 +22,7 @@
 		.long 8
 	header_end:
 
-	# The Multiboot2 spec states that the machine state after loading the kernel is as follows:
+# The Multiboot2 spec states that the machine state after loading the kernel is as follows:
 # 'EAX': Must contain the magic value  ‘0x36d76289’. The presence of this value indicates to the operating system that it was loaded by a Multiboot2 compliant boot loader.
 # 'EBX': Must contain the 32 bit physical address of the Multiboot2 information structure provided by the boot loader.
 # 'CS':  Must be a 32 bit read/execute code segment with an offset of '0' and a limit of '0xFFFFFFFF'. The exact value is undefined.

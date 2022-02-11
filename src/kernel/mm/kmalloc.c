@@ -60,6 +60,7 @@ ssize_t k_malloc_init() {
         }
         return -1;
     }
+	printk("[KERNEL]: Heap initialized.\n[KERNEL]: Heap start: %x\n[KERNEL]: Heap end: %x\n[KERNEL]: Heap size: %dMb\n", heap_brk, heap_end, (heap_end - heap_brk) / (1024 * 1024));
     return 0;
 }
 

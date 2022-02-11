@@ -5,7 +5,7 @@
 #include <arch/arch.h>
 #include <arch/mmu.h>
 #include <arch/types.h>
-#include <arch/kernel/mm/pm.h>
+#include <kernel/mm/pm.h>
 #include <kernel/bootinfo.h>
 #include <kernel/bootmem.h>
 #include <kernel/printk.h>
@@ -207,7 +207,7 @@ void pmm_init(bootinfo_t *boot_info) {
 }
 
 /* 
- * These routines are exported to the upper kernel layers and implement the interface at <kernel/pmm.h>
+ * These routines are exported to the upper kernel layers and implement the interface at <kernel/pm.h>
  */
 
 phys_addr_t get_free_frame() {
@@ -253,6 +253,9 @@ void free_frame(phys_addr_t addr) {
 		panic("[PM]: Could not find address to free! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 	}
 	int index = addr / BLOCK_SIZE - bitmap->first_addr / BLOCK_SIZE;
+	if (!bitmap_test(bitmap->bitmap, index)) {
+		panic("[PM]: Trying to free a block already free! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
+	}
 	bitmap_unset(bitmap->bitmap, index);
 	bitmap->used_blocks--;
 	total_used_blocks--;

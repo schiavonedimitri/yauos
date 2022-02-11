@@ -13,6 +13,7 @@
 extern void gdt_init();
 extern size_t bootconsole_mem_get_number_buffered_items();
 extern void bootconsole_mem_flush_buffer(char*);
+extern void pmm_init(bootinfo_t*);
 extern void kernel_main(bootinfo_t*);
 bootinfo_t *boot_info;
 
@@ -288,17 +289,16 @@ static void boot_console_init() {
  */
 
 void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
-	extern void pmm_init(bootinfo_t*);
 	// Setup GDT
 	gdt_init();
 	// Setup initial bootconsole device to the memory ringbuffer for early output.
 	bootconsole_init(BOOTCONSOLE_MEM);
-	printk("[KERNEL]: Initialized memory buffered boot console.\n");
 	boot_info = (bootinfo_t*) b_malloc(sizeof(bootinfo_t));
 	if (!boot_info) {
 		panic("[KERNEL]: Failed to allocate memory! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 	}
 	boot_info->memory_size = 0;
+	// TODO: move the command line parsing one layer above the architecture specific code and initialize the early console with a fixed default one.
 	// Parse the kernel command line and format it for easier access to the upper kernel layer.
 	parse_cmdline(m_boot2_info);
 	// Initialize the real bootconsole according to kernel command line or defaults.
