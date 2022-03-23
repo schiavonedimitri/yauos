@@ -1,9 +1,9 @@
 #include <arch/cpu/gdt.h>
 
 extern void load_gdt(gdt_descriptor_t*);
-gdt_descriptor_t gdt_descriptor;
+static gdt_descriptor_t gdt_descriptor;
 
-gdt_entry_t gdt[3] = {
+static gdt_entry_t gdt[3] = {
 	SEGMENT_NULL,
 	SEGMENT_KCODE(0, 0xFFFFFFFF),
 	SEGMENT_KDATA(0, 0xFFFFFFFF)

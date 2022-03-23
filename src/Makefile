@@ -110,19 +110,19 @@ $(ISO_DIR)/yauos.iso: $(BIN_DIR)/yauos
 
 ifeq ($(BOOTCONSOLE), vga)
 qemu: $(ISO_DIR)/yauos.iso
-	@qemu-system-$(ARCH) -monitor stdio -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso
+	@qemu-system-$(ARCH) -monitor stdio -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso -smp 2
 else
 qemu: $(ISO_DIR)/yauos.iso
-	@qemu-system-$(ARCH) -serial mon:stdio -nographic -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso
+	@qemu-system-$(ARCH) -serial mon:stdio -nographic -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso -smp 2
 endif
 
 ifeq ($(BOOTCONSOLE), vga)
 qemu-gdb: $(ISO_DIR)/yauos.iso
-	@qemu-system-$(ARCH) -monitor stdio -S -s -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso
+	@qemu-system-$(ARCH) -monitor stdio -S -s -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso -smp 2
 else
 qemu-gdb: $(ISO_DIR)/yauos.iso
 	echo "Starting debugging session:"
-	@qemu-system-$(ARCH) -serial mon:stdio -nographic -S -s -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso
+	@qemu-system-$(ARCH) -serial mon:stdio -nographic -S -s -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso -smp 2
 endif
 
 clean:

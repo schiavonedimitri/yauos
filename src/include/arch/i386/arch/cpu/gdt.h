@@ -1,7 +1,14 @@
 #ifndef GDT_H
 #define GDT_H
 
+#ifndef __ASSEMBLER__
 #include <stdint.h>
+#endif
+
+#define GDT_KERNEL_CODE_OFFSET 0x08
+#define GDT_KERNEL_DATA_OFFSET 0x10
+
+#ifndef __ASSEMBLER__
 
 struct gdt_entry {
 	/**
@@ -75,10 +82,12 @@ struct gdt_entry {
 
 typedef struct gdt_entry gdt_entry_t;
 
-typedef struct gdt_descriptor {
+struct gdt_descriptor {
 	uint16_t table_size;
 	gdt_entry_t *table_address;
-} __attribute__((packed)) gdt_descriptor_t;
+} __attribute__((packed));
+
+typedef struct gdt_descriptor gdt_descriptor_t;
 
 #define SEGMENT(base, limit, accessed, readable_or_writable, conforming_or_expand_down, type, s, descriptor_privilege_level, present, available, reserved, default_operand_size_or_big, granularity) \
 	(gdt_entry_t) { \
@@ -103,5 +112,7 @@ typedef struct gdt_descriptor {
 #define SEGMENT_NULL SEGMENT(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 #define SEGMENT_KCODE(base, limit) (SEGMENT(base, limit, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1))
 #define SEGMENT_KDATA(base, limit) (SEGMENT(base, limit, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1))
+
+#endif /** __ASSEMBLER__ */
 
 #endif /** GDT_H */

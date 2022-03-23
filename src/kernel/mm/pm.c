@@ -140,30 +140,56 @@ void pmm_init(bootinfo_t *boot_info) {
 	// Will point to an area of memory large enough to hold all the bitmaps.
 	void *start_available_memory = (void*) -1;
 	// Try to find a place big enough to hold all the memory bitmaps that doesn't fall in the kernel range.
+
 	for (size_t i = 0; i < boot_info->memory_map_entries; i++) {
 		start_available_memory = (void*) -1;
 		if (boot_info->memory_map_entry[i].type == MEMORY_AVAILABLE) {
-			if(boot_info->memory_map_entry[i].length >= all_bitmaps_size) {
-				if (boot_info->memory_map_entry[i].base_addr != (phys_addr_t) k_start) {
-					// Rounding up to the next page boundary because we can only use whole pages.
-					if (PAGE_ROUND_UP((phys_addr_t) (boot_info->memory_map_entry[i].base_addr + all_bitmaps_size - 1)) < k_start) {
-						start_available_memory = PAGE_ROUND_UP((void*) (phys_addr_t) boot_info->memory_map_entry[i].base_addr);
-						break;
+			// Check if this region is big enough to hold all the bitmaps.
+			if (boot_info->memory_map_entry[i].length >= all_bitmaps_size) {
+				// Check if the region starting address is also the kernel starting address.
+				if (boot_info->memory_map_entry[i].base_addr != k_start) {
+					// Check if Kernel starts in this region.
+					if (k_start <= boot_info->memory_map_entry[i].base_addr + boot_info->memory_map_entry[i].length) {
+						// Check that there's enough space from base address for the bitmaps to not collide with kernel starting address.
+						// Rounding up to the next page boundary because we can only use whole pages.
+						if (PAGE_ROUND_UP((phys_addr_t) (boot_info->memory_map_entry[i].base_addr + all_bitmaps_size - 1)) < k_start) {
+							start_available_memory = PAGE_ROUND_UP((void*) (phys_addr_t) boot_info->memory_map_entry[i].base_addr);
+							break;
+						}
+						// Check if the kernel ends in this region and skip if it doesn't (means it spawns all the region's remaining space).
+						else {
+							if (k_end >= boot_info->memory_map_entry[i].base_addr + boot_info->memory_map_entry[i].length - 1) {
+								continue; 
+							}
+							// The kernel doesn't spawn the entire region, check that enough space is left for the bitmaps.
+							// Rounding up to the next page boundary because we can only use whole pages.
+							if (PAGE_ROUND_UP(((phys_addr_t) k_end + all_bitmaps_size - 1)) <= (phys_addr_t) (boot_info->memory_map_entry[i].base_addr + boot_info->memory_map_entry[i].length - 1)) {
+								start_available_memory = PAGE_ROUND_UP((void*) k_end);
+								break;
+							}
+						}
 					}
 					else {
 						// Rounding up to the next page boundary because we can only use whole pages.
-						if (PAGE_ROUND_UP(((phys_addr_t) k_end + all_bitmaps_size - 1)) <= (phys_addr_t) (boot_info->memory_map_entry[i].base_addr + boot_info->memory_map_entry[i].length - 1)) {
-							start_available_memory = PAGE_ROUND_UP((void*) k_end);
+						if (PAGE_ROUND_UP((phys_addr_t) (boot_info->memory_map_entry[i].base_addr + all_bitmaps_size - 1)) <= (phys_addr_t) (boot_info->memory_map_entry[i].base_addr + boot_info->memory_map_entry[i].length - 1)) {
+							start_available_memory = PAGE_ROUND_UP((void*) (phys_addr_t) boot_info->memory_map_entry[i].base_addr);
 							break;
 						}
+
 					}
 				}
-			}
-			else {
-				// Rounding up to the next page boundary because we can only use whole pages.
-				if (PAGE_ROUND_UP(((phys_addr_t) k_end + all_bitmaps_size - 1)) <= (phys_addr_t) (boot_info->memory_map_entry[i].base_addr + boot_info->memory_map_entry[i].length - 1)) {
-					start_available_memory = PAGE_ROUND_UP((void*) k_end);
-					break;
+				// Kernel starts at this region starting address.
+				else {
+					// Check that the kernel doesn't spawn this entire region, in case skip to the next.
+					if (k_end >= boot_info->memory_map_entry[i].base_addr + boot_info->memory_map_entry[i].length - 1) {
+						continue; 
+					}
+					// The kernel doesn't spawn the entire region, check that enough space is left for the bitmaps.
+					// Rounding up to the next page boundary because we can only use whole pages.
+					if (PAGE_ROUND_UP(((phys_addr_t) k_end + all_bitmaps_size - 1)) <= (phys_addr_t) (boot_info->memory_map_entry[i].base_addr + boot_info->memory_map_entry[i].length - 1)) {
+						start_available_memory = PAGE_ROUND_UP((void*) k_end);
+						break;
+					}
 				}
 			}
 		}
@@ -171,6 +197,7 @@ void pmm_init(bootinfo_t *boot_info) {
 	if (start_available_memory == (void*) -1) {
 		panic("[KERNEL]: Could not find an area of memory for the memory manager itself! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 	}
+	printk("bitmaps starting address: %x\n", start_available_memory);
 	// Allocate memory for the bitmaps from the region just found above.
 	for (bitmap_list_t *curr = bitmap_list;;) {
 		curr->bitmap = (uint32_t*) PHYSICAL_TO_VIRTUAL(start_available_memory);

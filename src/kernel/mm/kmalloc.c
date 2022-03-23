@@ -11,7 +11,7 @@
 #include <lib/string.h>
 
 /*
- * Ad with the bootmem allocator, this is just another K&R allocator that is backed up by the physical memory manager and the virtual memory manager.
+ * As with the bootmem allocator, this is just another K&R allocator that is backed up by the physical memory manager and the virtual memory manager.
  * This is used for kernel internal use. In the future a buddy allocator and a slab allocator will be added when the other essential structures of the kernel
  * will be designed and when userspace comes into play.
  */

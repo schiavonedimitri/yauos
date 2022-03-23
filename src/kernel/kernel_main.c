@@ -7,17 +7,15 @@
 #include <kernel/mm/pm.h>
 
 void kernel_main(bootinfo_t *boot_info) {
-	if (k_malloc_init() != -1) {
-		uint64_t *array = (uint64_t*) k_malloc(sizeof(uint64_t) * 1024);
-		if (array) {
-			printk("Allocated %d bytes starting at: %x\n", sizeof(uint64_t) * 1024, array);
+	for (;;) {
+		phys_addr_t frame = get_free_frame();
+		if (frame != (phys_addr_t) -1 && frame <= (phys_addr_t) 0x100000) {
+			printk("Allocated frame at: %x\n", frame);
 		}
 		else {
-			printk("Failed to allocate memory!\n");
+			break;
 		}
 	}
-	else {
-		panic("Failed to initialize kernel heap!\n");
-	}
+	asm volatile("int $0x0;");
 	arch_halt();
 }

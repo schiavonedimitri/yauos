@@ -11,6 +11,7 @@
 #include <platform/multiboot2.h>
 
 extern void gdt_init();
+extern void idt_init();
 extern size_t bootconsole_mem_get_number_buffered_items();
 extern void bootconsole_mem_flush_buffer(char*);
 extern void pmm_init(bootinfo_t*);
@@ -291,6 +292,7 @@ static void boot_console_init() {
 void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	// Setup GDT
 	gdt_init();
+	idt_init();
 	// Setup initial bootconsole device to the memory ringbuffer for early output.
 	bootconsole_init(BOOTCONSOLE_MEM);
 	boot_info = (bootinfo_t*) b_malloc(sizeof(bootinfo_t));

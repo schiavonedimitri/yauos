@@ -1,4 +1,5 @@
 #include <arch/mmu.h>
+#define MAX 300
 # Please note that this project uses the AT&T assembly syntax.
 
 # defining a separate section for the multiboot2 header because it needs to be linked first in order for a multiboot2 compliant bootloader to boot us. See the linker script.
