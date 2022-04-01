@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <arch/arch.h>
+#include <arch/cpu/cpu.h>
 #include <kernel/bootconsole.h>
 #include <kernel/printk.h>
 #include <lib/string.h>
@@ -232,6 +233,12 @@ static void print_hex_64(uint64_t value) {
  */
 
 void _printk(bool panic, const char* restrict format, ...) {
+	if (smp) {
+		lock_smp(&bootconsole_lock);
+	}
+	else {
+		lock();
+	}
 	va_list parameters;
 	va_start(parameters, format);
 	// While format is not a NULL character
@@ -320,6 +327,15 @@ void _printk(bool panic, const char* restrict format, ...) {
 	va_end(parameters);
 	// This implements the panic() macro like function and halts the machine after the printout is done.
 	if(panic) {
-		arch_halt();
+		cli();
+		halt();
+	}
+	else {
+		if (smp) {
+			unlock_smp(&bootconsole_lock);
+		}
+		else {
+			unlock();
+		}
 	}
 }

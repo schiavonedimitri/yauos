@@ -29,6 +29,7 @@ BOOTCONSOLE?=serial
 EARLY_HEAP_SIZE?=0x1000
 KERNEL_HEAP_SIZE?=0x4000000
 DEBUG_ENABLE?=0
+SMP?=yes
 
 ifeq ($(DEBUG_ENABLE), 1)
 	DEBUG:=-DDEBUG
@@ -44,12 +45,14 @@ ifeq ($(ARCH), i386)
 	ARCH_BITS:=32
 endif
 
-ifeq ($(ARCH), x64)
-	ARCH_BITS=64
+ifeq ($(SMP), yes)
+	QEMU_SMP:=-smp 4,sockets=4
+else
+	QEMU_SMP:=
 endif
 
 CFLAGS:=$(OPTIMIZATION) $(DEBUG_INFO) -MMD -MP -I$(INCLUDE_DIR) -I$(INCLUDE_ARCH_DIR) -I$(INCLUDE_PLATFORM_DIR)
-CFLAGS+=-ffreestanding -Wall -Wextra -std=gnu11 -DARCH=$(ARCH) -DARCH_BITS=$(ARCH_BITS) -DEARLY_HEAP_SIZE=$(EARLY_HEAP_SIZE) -DKERNEL_HEAP_SIZE=$(KERNEL_HEAP_SIZE) $(DEBUG)
+CFLAGS+=-ffreestanding -Wall -Wextra -std=gnu11 -DARCH=$(ARCH) -DARCH_BITS=$(ARCH_BITS) -DEARLY_HEAP_SIZE=$(EARLY_HEAP_SIZE) -DKERNEL_HEAP_SIZE=$(KERNEL_HEAP_SIZE) -DSMP=$(SMP) $(DEBUG)
 LDFLAGS:=-T $(ARCH_DIR)/$(ARCH).ld -nostdlib
 
 LIBS:=-lgcc
@@ -110,19 +113,19 @@ $(ISO_DIR)/yauos.iso: $(BIN_DIR)/yauos
 
 ifeq ($(BOOTCONSOLE), vga)
 qemu: $(ISO_DIR)/yauos.iso
-	@qemu-system-$(ARCH) -monitor stdio -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso -smp 2
+	@qemu-system-$(ARCH) -monitor stdio -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso $(QEMU_SMP)
 else
 qemu: $(ISO_DIR)/yauos.iso
-	@qemu-system-$(ARCH) -serial mon:stdio -nographic -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso -smp 2
+	@qemu-system-$(ARCH) -serial mon:stdio -nographic -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso $(QEMU_SMP)
 endif
 
 ifeq ($(BOOTCONSOLE), vga)
 qemu-gdb: $(ISO_DIR)/yauos.iso
-	@qemu-system-$(ARCH) -monitor stdio -S -s -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso -smp 2
+	@qemu-system-$(ARCH) -monitor stdio -S -s -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso $(QEMU_SMP)
 else
 qemu-gdb: $(ISO_DIR)/yauos.iso
 	echo "Starting debugging session:"
-	@qemu-system-$(ARCH) -serial mon:stdio -nographic -S -s -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso -smp 2
+	@qemu-system-$(ARCH) -serial mon:stdio -nographic -S -s -m $(QEMU_MEM) -cdrom $(ISO_DIR)/yauos.iso $(QEMU_SMP)
 endif
 
 clean:

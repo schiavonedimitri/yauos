@@ -4,7 +4,9 @@
         "stdint.h": "c",
         "bitmap.h": "c",
         "bootinfo.h": "c",
-        "kmalloc.h": "c"
+        "kmalloc.h": "c",
+        "printk.h": "c",
+        "random": "c"
     },
     "git.enableCommitSigning": true
 }

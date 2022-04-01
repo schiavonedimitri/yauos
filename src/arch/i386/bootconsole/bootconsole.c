@@ -5,7 +5,9 @@
 extern bootconsole_t bootconsole_mem;
 extern bootconsole_t bootconsole_serial;
 extern bootconsole_t bootconsole_vga_text_mode;
-bootconsole_t *bootconsole;
+spinlock_t bootconsole_lock = 0;
+
+static bootconsole_t *bootconsole;
 static bool bootconsole_enabled = 1;
 
 void bootconsole_disable() {

@@ -31,16 +31,21 @@ ssize_t map_page(phys_addr_t phys, virt_addr_t virt, uint16_t flags) {
             return -1;
         }
         kernel_directory.entry[dir_idx].address = frame >> 12;
-        kernel_directory.entry[dir_idx].present = 1;
+        kernel_directory.entry[dir_idx].present = flags & 0x1;
         kernel_directory.entry[dir_idx].read_write = flags >> 1 & 0x1;
         kernel_directory.entry[dir_idx].user_supervisor = flags >> 2 & 0x1;
+        kernel_directory.entry[dir_idx].page_write_through = flags >> 3 & 0x1;
+        kernel_directory.entry[dir_idx].page_cache_disable = flags >> 4 & 0x1;
     }
     // Get the address of the page table virt refers to.
     page_table_t *table = (page_table_t*) get_table_virtual_address(virt);
     table->entry[tbl_idx].address = phys >> 12;
-    table->entry[tbl_idx].present = 1;
+    table->entry[tbl_idx].present = flags & 0x1;
     table->entry[tbl_idx].read_write = flags >> 1 & 0x1;
     table->entry[tbl_idx].user_supervisor = flags >> 2 & 0x1;
+    table->entry[tbl_idx].page_write_through = flags >> 3 & 0x1;
+    table->entry[tbl_idx].page_cache_disable = flags >> 4 & 0x1;
+    table->entry[tbl_idx].global = flags >> 8 & 0x1;
     flush_tlb_single(virt);
     return 1;
 }

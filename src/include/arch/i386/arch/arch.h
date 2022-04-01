@@ -1,8 +1,8 @@
 #ifndef ARCH_H
 #define ARCH_H
 
-#define ARCH_BITS 32
+#include <stdint.h>
 
-extern void arch_halt(void);
+#define ARCH_BITS 32
 
 #endif /** ARCH_H */

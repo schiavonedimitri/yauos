@@ -143,7 +143,13 @@ void pmm_init(bootinfo_t *boot_info) {
 
 	for (size_t i = 0; i < boot_info->memory_map_entries; i++) {
 		start_available_memory = (void*) -1;
-		if (boot_info->memory_map_entry[i].type == MEMORY_AVAILABLE) {
+		if (boot_info->memory_map_entry[i].type == MEMORY_AVAILABLE || boot_info->memory_map_entry[i].type == MEMORY_RECLAIMABLE) {
+			// If the architecute is i386 try to place the bitmaps above 0x100000 to avoid overwriting BDA, EBDA and other known x86 low memory regions.
+			#if ARCH == i386
+				if(boot_info->memory_map_entry[i].base_addr < 0x100000) {
+					continue;
+				}
+			#endif
 			// Check if this region is big enough to hold all the bitmaps.
 			if (boot_info->memory_map_entry[i].length >= all_bitmaps_size) {
 				// Check if the region starting address is also the kernel starting address.
@@ -169,6 +175,7 @@ void pmm_init(bootinfo_t *boot_info) {
 							}
 						}
 					}
+					// The kernel doesn't start in this region, check that there's enough space for the bitmaps.
 					else {
 						// Rounding up to the next page boundary because we can only use whole pages.
 						if (PAGE_ROUND_UP((phys_addr_t) (boot_info->memory_map_entry[i].base_addr + all_bitmaps_size - 1)) <= (phys_addr_t) (boot_info->memory_map_entry[i].base_addr + boot_info->memory_map_entry[i].length - 1)) {
@@ -197,7 +204,6 @@ void pmm_init(bootinfo_t *boot_info) {
 	if (start_available_memory == (void*) -1) {
 		panic("[KERNEL]: Could not find an area of memory for the memory manager itself! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 	}
-	printk("bitmaps starting address: %x\n", start_available_memory);
 	// Allocate memory for the bitmaps from the region just found above.
 	for (bitmap_list_t *curr = bitmap_list;;) {
 		curr->bitmap = (uint32_t*) PHYSICAL_TO_VIRTUAL(start_available_memory);
@@ -210,6 +216,18 @@ void pmm_init(bootinfo_t *boot_info) {
 		}
 		curr = curr->next;
 	}
+	// If the architecture is i386 resreve known low memory regions.
+	#if ARCH == i386
+	if (reserve_region(0x0, 0x3FF) == -1) {
+		panic("[KERNEL]: Could not reserve IVT memory region! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
+	}
+	if (reserve_region(0x400, 0x4FF) == -1) {
+		panic("[KERNEL]: Could not reserve BDA memory region! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
+	}
+	if (reserve_region(0x80000, 0x9FFFF) == -1) {
+		panic("[KERNEL]: Could not reserve EBDA memory region! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
+	}
+	#endif
 	// Reserving kernel memory.
 	if (reserve_region(k_start, k_end - k_start) == -1) {
 		panic("[KERNEL]: Could not reserve kernel physical memory! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);

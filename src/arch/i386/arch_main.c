@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <arch/align.h>
+#include <arch/cpu/mp.h>
 #include <arch/types.h>
 #include <kernel/bootconsole.h>
 #include <kernel/assert.h>
@@ -17,6 +18,8 @@ extern void bootconsole_mem_flush_buffer(char*);
 extern void pmm_init(bootinfo_t*);
 extern void kernel_main(bootinfo_t*);
 bootinfo_t *boot_info;
+
+bool smp = 0;
 
 static void parse_cmdline(multiboot2_information_header_t *m_boot2_info) {
 	boot_info->karg_entries = 0;
@@ -188,7 +191,7 @@ static void parse_memory_map(multiboot2_information_header_t *m_boot2_info) {
 
 /*
  * This routine parses the kernel command line that has been made for the upper level kernel to check if 
- * any bootconsole=xxx parameter has been specified in the command line and try to initialize that bootconsole.
+ * any bootconsole=xxx parameter has been specified in the command line and tries to initialize that bootconsole.
  * If nothing is specified the kernel fallbacks to the serial implementation and if that fails too it fallbacks to 
  * the vga implementation. The code assumes the presence of the standard vga text mode on the target platform (i386-pc).
  * Note: the makefile by default is set to use serial bootconsole. If you try to run on real hardware remember to set
@@ -292,6 +295,7 @@ static void boot_console_init() {
 void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	// Setup GDT
 	gdt_init();
+	// Setup IDT
 	idt_init();
 	// Setup initial bootconsole device to the memory ringbuffer for early output.
 	bootconsole_init(BOOTCONSOLE_MEM);
@@ -312,5 +316,8 @@ void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	if (magic != MULTIBOOT2_MAGIC) {
 		panic("[KERNEL]: This kernel must be loaded by a Multiboot2 compliant bootloader! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 	}
+	// spinlock.h
+	smp = 0;
+	mp_init();
 	kernel_main(boot_info);
 }

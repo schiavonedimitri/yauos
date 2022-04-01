@@ -3,7 +3,9 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdint.h>
+#include <kernel/spinlock.h>
+
+extern spinlock_t bootconsole_lock;
 
 typedef enum bootconsole_type {
 	BOOTCONSOLE_MEM = 1,
