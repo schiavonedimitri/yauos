@@ -6,7 +6,10 @@
         "bootinfo.h": "c",
         "kmalloc.h": "c",
         "printk.h": "c",
-        "random": "c"
+        "random": "c",
+        "mp.h": "c",
+        "vm.h": "c",
+        "paging.h": "c"
     },
     "git.enableCommitSigning": true
 }

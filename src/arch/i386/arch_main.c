@@ -17,8 +17,8 @@ extern size_t bootconsole_mem_get_number_buffered_items();
 extern void bootconsole_mem_flush_buffer(char*);
 extern void pmm_init(bootinfo_t*);
 extern void kernel_main(bootinfo_t*);
-bootinfo_t *boot_info;
 
+bootinfo_t *boot_info;
 bool smp = 0;
 
 static void parse_cmdline(multiboot2_information_header_t *m_boot2_info) {
@@ -293,10 +293,6 @@ static void boot_console_init() {
  */
 
 void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
-	// Setup GDT
-	gdt_init();
-	// Setup IDT
-	idt_init();
 	// Setup initial bootconsole device to the memory ringbuffer for early output.
 	bootconsole_init(BOOTCONSOLE_MEM);
 	boot_info = (bootinfo_t*) b_malloc(sizeof(bootinfo_t));
@@ -309,13 +305,17 @@ void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	parse_cmdline(m_boot2_info);
 	// Initialize the real bootconsole according to kernel command line or defaults.
 	boot_console_init();
-	// Parse the multiboot2 memory map and format it according to the way the upper kernel layer expects it.
-	parse_memory_map(m_boot2_info);	
-	pmm_init(boot_info);
 	// If the kernel wasn't loaded by a multiboot2 compliant bootloader fail as we rely on the provided memory map.
 	if (magic != MULTIBOOT2_MAGIC) {
 		panic("[KERNEL]: This kernel must be loaded by a Multiboot2 compliant bootloader! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 	}
+	// Parse the multiboot2 memory map and format it according to the way the upper kernel layer expects it.
+	parse_memory_map(m_boot2_info);	
+	pmm_init(boot_info);
+	// Setup GDT
+	gdt_init();
+	// Setup IDT
+	idt_init();
 	// spinlock.h
 	smp = 0;
 	mp_init();

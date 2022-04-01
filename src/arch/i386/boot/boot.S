@@ -1,5 +1,4 @@
 #include <arch/mmu.h>
-#define MAX 300
 # Please note that this project uses the AT&T assembly syntax.
 
 # defining a separate section for the multiboot2 header because it needs to be linked first in order for a multiboot2 compliant bootloader to boot us. See the linker script.
@@ -8,19 +7,19 @@
 		# Multiboot2 magic
 		.long 0xE85250D6
 		# Multiboot2 architecture, 0 for i386
-		.long 0
+		.long 0x0
 		# Multiboot2 header length
 		.long (header_end - header_start)
 		# Multiboot2 checksum -(magic + architecture + length)
 		.long -(0xe85250d6 + (header_end - header_start))
 		# Multiboot2 tags, must be 8 byte aligned and end with a tag of type 0 and size 8
-	.align 8
+	.align 0x8
 		# Multiboot2 terminating tag type
-		.short 0
+		.short 0x0
 		# Multiboot2 terminating tag flags
-		.short 0
+		.short 0x0
 		# Multiboot2 terminating tag size
-		.long 8
+		.long 0x8
 	header_end:
 
 # The Multiboot2 spec states that the machine state after loading the kernel is as follows:
@@ -51,23 +50,23 @@
 
 .section .bss
 	# This is going to be an area of EARLY_HEAP_SIZE bytes used for memory allocation early in the boot stage. Among other things it will be used to booststrap the physical memory system itself.
-	.align 4096
+	.align 0x1000
 	bootmem_start:
 	.skip EARLY_HEAP_SIZE
 	bootmem_end:
 	# This is going to be the location of the kernel page directory which will be used throughout the rest of the kernel.
-	.align 4096
+	.align 0x1000
 	kernel_directory:
-	.skip 4096
+	.skip 0x1000
 	# Location of the first page table (4Kb) that maps the first 4Mb physical addresses starting from 0x00000000.
 	# This memory will be reused in higher layers of the kernel initialization.
-	.align 4096
+	.align 0x1000
 	kernel_boot_page_table:
-		.skip 4096
+		.skip 0x1000
 	# Initial stack for the kernel.
-	.align 4
+	.align 0x4
 	stack_bottom:
-		.skip 4096
+		.skip 0x1000
 	stack_top:
 
 .extern _KERNEL_TEXT_START_
@@ -98,8 +97,8 @@
 		movl %esi, %edx
 		orl $0x3, %edx
 		movl %edx, (%edi)
-		addl $4096, %esi
-		addl $4, %edi
+		addl $0x1000, %esi
+		addl $0x4, %edi
 		cmpl %ecx, %esi
 		jne 1b
 		# 2) Map from _KERNEL_TEXT_START_ to _KERNEL_DATA_START_ R.
@@ -108,15 +107,15 @@
 		movl %esi, %edx
 		orl $0x1, %edx
 		movl %edx, (%edi)
-		addl $4096, %esi
-		addl $4, %edi
+		addl $0x1000, %esi
+		addl $0x4, %edi
 		cmpl %ecx, %esi
 		jne 1b
 		# Calculate how many pages have been mapped of the 512 we wanted to map.
 		pushl %edi
 		subl $VIRTUAL_TO_PHYSICAL(kernel_boot_page_table), %edi
-		shr $2, %edi
-		movl $512, %edx
+		shr $0x2, %edi
+		movl $0x200, %edx
 		subl %edi, %edx
 		movl %edx, %ecx
 		popl %edi
@@ -126,16 +125,28 @@
 		movl %esi, %edx
 		orl $0x3, %edx
 		movl %edx, (%edi)
-		addl $4096, %esi
-		addl $4, %edi
+		addl $0x1000, %esi
+		addl $0x4, %edi
 		loop 1b
+		# ReMap video display memory (0xA0000 - 0xC0000) with caching disabled.
+		movl $(VIRTUAL_TO_PHYSICAL(kernel_boot_page_table) + 0xA0 * 0x4), %edi
+		movl $0xC0000, %ecx
+		movl $0xA0000, %esi
+	1:
+		movl %esi, %edx
+		orl $0x13, %edx
+		movl %edx, (%edi)
+		addl $0x1000, %esi
+		addl $0x4, %edi
+		cmpl %ecx, %esi
+		jne 1b
 		# The first directory entry is needed for identity mapping physical addresses to virtual addresses.
 		# This is needed in order to avoid a triple fault on the instruction that jumps to the virtual addresses after enabling paging (which is still in lower addresses).
 		movl $(VIRTUAL_TO_PHYSICAL(kernel_boot_page_table) + 0x3), VIRTUAL_TO_PHYSICAL(kernel_directory)
 		# Actual directory that performs the required mapping to 0xC0000000.
-		movl $(VIRTUAL_TO_PHYSICAL(kernel_boot_page_table) + 0x3), VIRTUAL_TO_PHYSICAL(kernel_directory) + 768 * 4
+		movl $(VIRTUAL_TO_PHYSICAL(kernel_boot_page_table) + 0x3), VIRTUAL_TO_PHYSICAL(kernel_directory) + 0x300 * 0x4
 		# Recurive directory entry.
-		movl $(VIRTUAL_TO_PHYSICAL(kernel_directory) + 0x3), VIRTUAL_TO_PHYSICAL(kernel_directory) + 1023 * 4
+		movl $(VIRTUAL_TO_PHYSICAL(kernel_directory) + 0x3), VIRTUAL_TO_PHYSICAL(kernel_directory) + 0x3FF * 0x4
 		movl $(VIRTUAL_TO_PHYSICAL(kernel_directory)), %ecx
 		# Pointing cr3 to the kernel directory just created.
 		movl %ecx, %cr3

@@ -233,12 +233,6 @@ static void print_hex_64(uint64_t value) {
  */
 
 void _printk(bool panic, const char* restrict format, ...) {
-	if (smp) {
-		lock_smp(&bootconsole_lock);
-	}
-	else {
-		lock();
-	}
 	va_list parameters;
 	va_start(parameters, format);
 	// While format is not a NULL character
@@ -329,13 +323,5 @@ void _printk(bool panic, const char* restrict format, ...) {
 	if(panic) {
 		cli();
 		halt();
-	}
-	else {
-		if (smp) {
-			unlock_smp(&bootconsole_lock);
-		}
-		else {
-			unlock();
-		}
 	}
 }

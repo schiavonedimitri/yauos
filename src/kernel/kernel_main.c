@@ -4,5 +4,5 @@
 #include <kernel/printk.h>
 
 void kernel_main(bootinfo_t *boot_info) {
-	printk("[KERNEL]: Arch init complete.");
+	printk("[KERNEL]: Arch init complete.\n");
 }

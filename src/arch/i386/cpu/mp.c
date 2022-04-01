@@ -30,6 +30,7 @@ static mp_floating_pointer_structure_t* mp_floating_pointer_structure_search(voi
 }
 
 static void print_table(uint8_t *entry, size_t num_entries) {
+    
     for (size_t i = 0; i < num_entries; i++) {
         switch(*entry) {
             case MP_CONFIGURATION_TABLE_PROCESSOR_ENTRY_TYPE:
@@ -90,7 +91,22 @@ static void print_table(uint8_t *entry, size_t num_entries) {
                          printk("Trigger mode: level triggered\n");
                          break;
                 }
-                printk("Source bus id: %x\nSource bus IRQ: %x\nDestination I/O apic id: %x\nDestination I/O apic INTIN#: %x\n_____________\n", io_apic_interrupt_entry->source_bus_id, io_apic_interrupt_entry->source_bus_irq, io_apic_interrupt_entry->destination_io_apic_id, io_apic_interrupt_entry->destination_io_apic_intin);
+                printk("Source bus id: %x\nSource bus irq: %x\nIgnore the following information if the bus id is not that of PCI bus\n", io_apic_interrupt_entry->source_bus_id, io_apic_interrupt_entry->source_bus_irq);
+                switch(io_apic_interrupt_entry->source_bus_irq & MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_PCI_SOURCE_MASK) {
+                    case MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_PCI_SOURCE_INT_A:
+                        printk("PCI interrupt source: INT_A#\n");
+                        break;
+                    case MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_PCI_SOURCE_INT_B:
+                        printk("PCI interrupt source: INT_B#\n");
+                        break;
+                    case MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_PCI_SOURCE_INT_C:
+                        printk("PCI interrupt source: INT_C#\n");
+                        break;
+                    case MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_PCI_SOURCE_INT_D:
+                        printk("PCI interrupt source: INT_D#\n");
+                        break;                
+                }
+                printk("PCI interrupt source device number: %x\nDestination I/O apic id: %x\nDestination I/O apic INTIN#: %x\n_____________\n", (io_apic_interrupt_entry->source_bus_irq >> MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_PCI_SOURCE_DEVICE_NUMBER_SHIFT) & MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_PCI_SOURCE_DEVICE_NUMBER_MASK, io_apic_interrupt_entry->destination_io_apic_id, io_apic_interrupt_entry->destination_io_apic_intin);
                 entry += sizeof(mp_configuration_table_io_apic_interrupt_entry_t);
                 break;
             case  MP_CONFIGURATION_TABLE_LOCAL_APIC_INTERRUPT_ENTRY:
@@ -184,8 +200,9 @@ void mp_init() {
         }
     }
     valid_floating_pointer_structure:
-        printk("MP floating pointer structure found at: %x\nMP specification revision: %d\nMP default configuration: %d\nMP configuration table physical address: %x\n", mp, mp->specification_revision, mp->mp_feature_bytes[0], mp->mp_configuration_table_header_address);
-        if (mp->mp_feature_bytes[0] == 0) {
+        printk("_____________\nMP floating pointer structure found at: %x\nMP specification revision: %s\n%s\n", mp, mp->specification_revision == MP_FLOATING_POINTER_STRUCTURE_SPEC_REVISION_1_1 ? "1.1" : "1.4", (mp->mp_feature_bytes[1] >> MP_FLOATING_POINTER_STRUCTURE_IMCRP_SHIFT) & MP_FLOATING_POINTER_STRUCTURE_IMCR_PRESENT ? "IMCR present PIC mode implemented" : "IMCR not present virtual wire mode implemented");
+        if (mp->mp_feature_bytes[0] == MP_FLOATiNG_POINTER_STRUCTURE_MP_CONFIGURATION_TABLE_PRESENT) {
+            printk("MP configuration table physical address: %x\n_____________\n", mp->mp_configuration_table_header_address);
             mp_configuration_table_header_t *mp_config = (mp_configuration_table_header_t*) PHYSICAL_TO_VIRTUAL(mp->mp_configuration_table_header_address);
             if (memcmp(mp_config->signature, MP_CONFIGURATION_TABLE_SIGNATURE, MP_CONFIGURATION_TABLE_SIGNATURE_SIZE) == 0 && checksum((void*) mp_config, mp_config->base_table_length) == 0) {
                 printk("MP configuration header table found:\nOem id: %s\nProduct id: %s\nLocal apic physical address: %x\n", mp_config->oem_id, mp_config->product_id, mp_config->local_apic_address);
