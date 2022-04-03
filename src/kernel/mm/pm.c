@@ -12,6 +12,7 @@
 #include <lib/bitmap.h>
 #include <lib/string.h>
 
+virt_addr_t kernel_virtual_end = 0;
 static phys_addr_t k_start = VIRTUAL_TO_PHYSICAL(&_KERNEL_START_);
 static phys_addr_t k_end = VIRTUAL_TO_PHYSICAL(&_KERNEL_END_);
 static bitmap_list_t *bitmap_list = NULL;
@@ -69,16 +70,14 @@ static int reserve_region(phys_addr_t start_addr, size_t size) {
 		region_in_blocks = size / BLOCK_SIZE;
 	}
 	size_t bit = start_addr / BLOCK_SIZE - bitmap->first_addr / BLOCK_SIZE;
-	for (size_t i = 0; i < region_in_blocks; i++) {
+	for (size_t i = 0; i < region_in_blocks; i++ , bit++) {
 		if (!bitmap_test(bitmap->bitmap, bit)) {
 			bitmap->reserved_blocks++;
 			total_reserved_blocks++;
 			bitmap->used_blocks++;
 			total_used_blocks++;
-			bitmap_set(bitmap->bitmap, bit++);
-			continue;
+			bitmap_set(bitmap->bitmap, bit);
 		}
-		bit++;
 	}
 	return 1;
 }
@@ -100,6 +99,7 @@ void pmm_init(bootinfo_t *boot_info) {
 	for (size_t i = 0; i < boot_info->memory_map_entries; i++){
 		if (boot_info->memory_map_entry[i].type == MEMORY_AVAILABLE || boot_info->memory_map_entry[i].type == MEMORY_RECLAIMABLE) {
 			size_t bitmap_blocks = (boot_info->memory_map_entry[i].length / BLOCK_SIZE);
+			//panic("curr bitmap blocks: %d\n", bitmap_blocks);
 			total_blocks += bitmap_blocks;
 			size_t bitmap_size = bitmap_blocks / 8;
 			if (bitmap_blocks % 8) {
@@ -137,10 +137,11 @@ void pmm_init(bootinfo_t *boot_info) {
 			}
 		}
 	}
+	// Update kernel virtual end address to take into account the virtual space taken by the bitmaps.
+	kernel_virtual_end = PHYSICAL_TO_VIRTUAL(k_end) + all_bitmaps_size;
 	// Will point to an area of memory large enough to hold all the bitmaps.
 	void *start_available_memory = (void*) -1;
 	// Try to find a place big enough to hold all the memory bitmaps that doesn't fall in the kernel range.
-
 	for (size_t i = 0; i < boot_info->memory_map_entries; i++) {
 		start_available_memory = (void*) -1;
 		if (boot_info->memory_map_entry[i].type == MEMORY_AVAILABLE || boot_info->memory_map_entry[i].type == MEMORY_RECLAIMABLE) {
@@ -221,10 +222,10 @@ void pmm_init(bootinfo_t *boot_info) {
 	if (reserve_region(0x0, 0x3FF) == -1) {
 		panic("[KERNEL]: Could not reserve IVT memory region! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 	}
-	if (reserve_region(0x400, 0x4FF) == -1) {
+	if (reserve_region(0x400, 0x4FF - 0x400) == -1) {
 		panic("[KERNEL]: Could not reserve BDA memory region! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 	}
-	if (reserve_region(0x80000, 0x9FFFF) == -1) {
+	if (reserve_region(0x80000, 0x9FFFF - 0x80000) == -1) {
 		panic("[KERNEL]: Could not reserve EBDA memory region! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 	}
 	#endif

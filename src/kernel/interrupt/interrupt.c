@@ -12,7 +12,7 @@ static interrupt_handler_t interrupt_handler_table[256];
 void interrupt_handler(interrupt_context_t *context) {
     printk("interrupt fired: %d\n", context->interrupt_number);
     if (context->interrupt_number == 14) {
-        printk("Page fault at address: %x\n", read_cr2());
+        panic("Page fault at address: %x\n", read_cr2());
     }
     if (context->interrupt_number == 39) {
         if (pic_read_register(READ_MASTER | READ_ISR) & ISR_IRQ7_NOT_IN_SERVICE) {

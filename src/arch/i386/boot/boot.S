@@ -128,7 +128,7 @@
 		addl $0x1000, %esi
 		addl $0x4, %edi
 		loop 1b
-		# ReMap video display memory (0xA0000 - 0xC0000) with caching disabled.
+		# Remap video display memory (0xA0000 - 0xC0000) with caching disabled.
 		movl $(VIRTUAL_TO_PHYSICAL(kernel_boot_page_table) + 0xA0 * 0x4), %edi
 		movl $0xC0000, %ecx
 		movl $0xA0000, %esi

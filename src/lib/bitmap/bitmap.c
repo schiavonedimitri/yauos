@@ -3,12 +3,12 @@
 #include "bitmap.h"
 
 void bitmap_set(void *bitmap, int bit) {
-	unsigned long *b_map = (unsigned long*) bitmap;
+	uint32_t *b_map = (uint32_t*) bitmap;
 	b_map[bit / BITMAP_BITS] |= (1 << (bit % BITMAP_BITS));
 }
 
 void bitmap_unset(void *bitmap, int bit) {
-	unsigned long *b_map = (unsigned long*) bitmap;
+	uint32_t *b_map = (uint32_t*) bitmap;
 	b_map[bit / BITMAP_BITS] &= ~(1 << (bit % BITMAP_BITS));
 }
 
@@ -18,7 +18,7 @@ int bitmap_test(void *bitmap, int bit) {
 }
 
 int bitmap_first_unset(void *bitmap, size_t size) {
-	unsigned long *b_map = (unsigned long*) bitmap;
+	uint32_t *b_map = (uint32_t*) bitmap;
 	size_t rem_bits = size % BITMAP_BITS;
 	for (size_t i = 0; i < size / BITMAP_BITS; i++) {
 		if (b_map[i] != BITMAP_FULL_MASK) {

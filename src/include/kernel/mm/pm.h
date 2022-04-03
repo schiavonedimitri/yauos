@@ -6,6 +6,8 @@
 #include <arch/mmu.h>
 #include <arch/types.h>
 
+extern virt_addr_t kernel_virtual_end;
+
 #define BLOCK_SIZE PAGE_SIZE
 
 typedef struct bitmap_list {

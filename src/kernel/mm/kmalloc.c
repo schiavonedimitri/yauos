@@ -17,7 +17,7 @@
  */
 
 static virt_addr_t heap_brk;
-static virt_addr_t heap_end = (virt_addr_t) &_KERNEL_END_ + KERNEL_HEAP_SIZE;
+static virt_addr_t heap_end;
 static Header base;
 static Header *freep;
 
@@ -30,14 +30,16 @@ static Header *freep;
  */
 
 ssize_t k_malloc_init() {
-	heap_brk = (virt_addr_t) PAGE_ROUND_UP(&_KERNEL_END_);
+	heap_brk = PAGE_ROUND_UP(kernel_virtual_end);
+	heap_end = heap_brk + KERNEL_HEAP_SIZE;
+	//panic("heap break: %x\nheap end: %x\n", heap_brk, heap_end);
     bool failed = false;
     size_t failed_idx = 0;
     virt_addr_t tmp = heap_brk;
     for (size_t i = 0; i < KERNEL_HEAP_SIZE / PAGE_SIZE; i++) {
         phys_addr_t frame = get_free_frame();
         if (frame != (phys_addr_t) -1) {
-            if (map_page(frame, tmp, PROT_KERN | PROT_READ_WRITE)) {
+            if (map_page(frame, tmp, PROT_PRESENT | PROT_KERN | PROT_READ_WRITE)) {
                 tmp += PAGE_SIZE;
                 continue;
             }

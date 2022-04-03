@@ -7,6 +7,9 @@
 
 #define GDT_KERNEL_CODE_OFFSET 0x08
 #define GDT_KERNEL_DATA_OFFSET 0x10
+#define GDT_CPU_DATA_OFFSET 0x18
+#define GDT_USER_CODE_OFFSET 0x20
+#define GDT_USER_DATA_OFFSET 0x28
 
 #ifndef __ASSEMBLER__
 
@@ -39,7 +42,7 @@ struct gdt_entry {
 	uint8_t conforming_or_expand_down : 1;
 	/**
 	* T (Type) - If this bit is set, this is a code segment descriptor. If this bit is clear, this is a data/stack segment descriptor, which had "D" replaced by "B", "C" replaced by "E" and "R" replaced by "W".
-	* This is infact a special case of the 2-bit type filed, where the preceding bit 12 cleared as "0" refers to more internal system desciptors, for LDT, LSS, and gates.
+	* This is infact a special case of the 2-bit type field, where the preceding bit 12 cleared as "0" refers to more internal system desciptors, for LDT, LSS, and gates.
 	*/
 	uint8_t type : 1;
 	/**
@@ -112,6 +115,7 @@ typedef struct gdt_descriptor gdt_descriptor_t;
 #define SEGMENT_NULL SEGMENT(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 #define SEGMENT_KCODE(base, limit) (SEGMENT(base, limit, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1))
 #define SEGMENT_KDATA(base, limit) (SEGMENT(base, limit, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1))
+#define SEGMENT_CPU_DATA(base, limit) (SEGMENT(base, limit, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1))
 
 #endif /** __ASSEMBLER__ */
 

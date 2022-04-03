@@ -2,10 +2,17 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <arch/align.h>
+#include <arch/cpu/cpu.h>
 #include <arch/cpu/mp.h>
 #include <arch/mmu.h>
+#include <kernel/bootmem.h>
 #include <kernel/printk.h>
 #include <lib/string.h>
+
+cpu_data_t *cpu_data;
+uint8_t num_cpus = 0;
+phys_addr_t local_apic_address = 0;
+bool smp = 0;
 
 static uint8_t checksum(void* addr, size_t len) {
     uint8_t checksum = 0;
@@ -29,130 +36,70 @@ static mp_floating_pointer_structure_t* mp_floating_pointer_structure_search(voi
     return ret;
 }
 
-static void print_table(uint8_t *entry, size_t num_entries) {
-    
+static void init_cpu_data(uint8_t *entry, size_t num_entries) {
+    uint8_t *saved_entry = entry;
     for (size_t i = 0; i < num_entries; i++) {
         switch(*entry) {
             case MP_CONFIGURATION_TABLE_PROCESSOR_ENTRY_TYPE:
                 mp_configuration_table_processor_entry_t *processor_entry = (mp_configuration_table_processor_entry_t*) entry;
                 if (processor_entry->cpu_flags & MP_CONFIGURATION_TABLE_PROCESSOR_ENTRY_CPU_FLAGS_PROCESSOR_USABLE) {
-                    printk("Found processor entry:\nLocal apic id: %x\nLocal apic version: %x\n%s\n_____________\n", processor_entry->local_apic_id, processor_entry->local_apic_version, (processor_entry->cpu_flags >> MP_CONFIGURATION_TABLE_PROCESSOR_ENTRY_CPU_FLAGS_PROCESSOR_IS_BSP_SHIFT) & MP_CONFIGURATION_TABLE_PROCESSOR_ENTRY_CPU_FLAGS_PROCESSOR_IS_BSP ? "processor is BSP" : "processor is AP");
+                    num_cpus++;
                 }
                 entry += sizeof(mp_configuration_table_processor_entry_t);
                 break;
             case MP_CONFIGURATION_TABLE_BUS_ENTRY_TYPE:
-                mp_configuration_table_bus_entry_t *bus_entry = (mp_configuration_table_bus_entry_t*) entry;
-                printk("Found bus entry:\nBus id: %x\nBus type: %s\n_____________\n", bus_entry->bus_id, bus_entry->bus_type_string);
                 entry += sizeof(mp_configuration_table_bus_entry_t);
                 break;
             case MP_CONFIGURATION_TABLE_IO_APIC_ENTRY_TYPE:
                 mp_configuration_table_io_apic_entry_t *io_apic_entry = (mp_configuration_table_io_apic_entry_t*) entry;
                 if (io_apic_entry->io_apic_flags & MP_CONFIGURATION_TABLE_IO_APIC_FLAGS_USABLE) {
-                    printk("Found I/O Apic entry:\nI/O Apic id: %x\nI/O Apic version: %x\nI/O Apic physical address: %x\n_____________\n", io_apic_entry->io_apic_id, io_apic_entry->io_apic_version, io_apic_entry->io_apic_address);
                 }
                 entry += sizeof(mp_configuration_table_io_apic_entry_t);
                 break;
             case  MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_ENTRY:
-                mp_configuration_table_io_apic_interrupt_entry_t *io_apic_interrupt_entry = (mp_configuration_table_io_apic_interrupt_entry_t*) entry;
-                printk("Found I/O Apic interrupt entry:\n");
-                switch(io_apic_interrupt_entry->interrupt_type) {
-                    case MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_ENTRY_TYPE_INT:
-                        printk("Interrupt type: INT (vectored interrupt)\n");
-                        break;
-                    case MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_ENTRY_TYPE_NMI:
-                        printk("Interrupt type: NMI\n");
-                        break;
-                    case MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_ENTRY_TYPE_SMI:
-                        printk("Interrupt type: SMI\n");
-                        break;
-                    case MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_ENTRY_TYPE_EXTINT:
-                        printk("Interrupt type: ExtINT\n");
-                        break;
-                }
-                switch (io_apic_interrupt_entry->interrupt_flags & MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_FLAGS_POLARITY_MASK) {
-                    case MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_FLAGS_POLARITY_CONFORMS_TO_BUS_SPECIFICATION:
-                        printk("Polarity: conforms to bus specification\n");
-                        break;
-                    case MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_FLAGS_POLARITY_ACTIVE_LOW:
-                        printk("Polarity: active low\n");
-                        break;
-                    case MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_FLAGS_POLARITY_ACTIVE_HIGH:
-                        printk("Polarity: active high\n");
-                        break;
-                }
-                switch ((io_apic_interrupt_entry->interrupt_flags >> MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_FLAGS_TRIGGER_MODE_SHIFT) & MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_FLAGS_TRIGGER_MODE_MASK) {
-                    case MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_FLAGS_TRIGGER_MODE_CONFORMS_TO_BUS_SPECIFICATION:
-                        printk("Trigger mode: conforms to bus specification\n");
-                        break;
-                    case MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_FLAGS_TRIGGER_MODE_EDGE_TRIGGERED:
-                        printk("Trigger mode: edge triggered\n");
-                        break;
-                    case MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_FLAGS_TRIGGER_MODE_LEVEL_TRIGGERED:
-                         printk("Trigger mode: level triggered\n");
-                         break;
-                }
-                printk("Source bus id: %x\nSource bus irq: %x\nIgnore the following information if the bus id is not that of PCI bus\n", io_apic_interrupt_entry->source_bus_id, io_apic_interrupt_entry->source_bus_irq);
-                switch(io_apic_interrupt_entry->source_bus_irq & MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_PCI_SOURCE_MASK) {
-                    case MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_PCI_SOURCE_INT_A:
-                        printk("PCI interrupt source: INT_A#\n");
-                        break;
-                    case MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_PCI_SOURCE_INT_B:
-                        printk("PCI interrupt source: INT_B#\n");
-                        break;
-                    case MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_PCI_SOURCE_INT_C:
-                        printk("PCI interrupt source: INT_C#\n");
-                        break;
-                    case MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_PCI_SOURCE_INT_D:
-                        printk("PCI interrupt source: INT_D#\n");
-                        break;                
-                }
-                printk("PCI interrupt source device number: %x\nDestination I/O apic id: %x\nDestination I/O apic INTIN#: %x\n_____________\n", (io_apic_interrupt_entry->source_bus_irq >> MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_PCI_SOURCE_DEVICE_NUMBER_SHIFT) & MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_PCI_SOURCE_DEVICE_NUMBER_MASK, io_apic_interrupt_entry->destination_io_apic_id, io_apic_interrupt_entry->destination_io_apic_intin);
                 entry += sizeof(mp_configuration_table_io_apic_interrupt_entry_t);
                 break;
             case  MP_CONFIGURATION_TABLE_LOCAL_APIC_INTERRUPT_ENTRY:
-                mp_configuration_table_local_apic_interrupt_entry_t *local_apic_interrupt_entry = (mp_configuration_table_local_apic_interrupt_entry_t*) entry;
-                printk("Found local apic interrupt entry:\n");
-                switch(local_apic_interrupt_entry->interrupt_type) {
-                    case MP_CONFIGURATION_TABLE_LOCAL_APIC_INTERRUPT_ENTRY_TYPE_INT:
-                        printk("Interrupt type: INT (vectored interrupt)\n");
-                        break;
-                    case MP_CONFIGURATION_TABLE_LOCAL_APIC_INTERRUPT_ENTRY_TYPE_NMI:
-                        printk("Interrupt type: NMI\n");
-                        break;
-                    case MP_CONFIGURATION_TABLE_LOCAL_APIC_INTERRUPT_ENTRY_TYPE_SMI:
-                         printk("Interrupt type: SMI\n");
-                         break;
-                    case MP_CONFIGURATION_TABLE_LOCAL_APIC_INTERRUPT_ENTRY_TYPE_EXTINT:
-                        printk("Interrupt type: ExtINT\n");
-                        break;
-                }
-                switch (local_apic_interrupt_entry->interrupt_flags & MP_CONFIGURATION_TABLE_LOCAL_APIC_INTERRUPT_FLAGS_POLARITY_MASK) {
-                    case MP_CONFIGURATION_TABLE_LOCAL_APIC_INTERRUPT_FLAGS_POLARITY_CONFORMS_TO_BUS_SPECIFICATION:
-                        printk("Polarity: conforms to bus specification\n");
-                        break;
-                    case MP_CONFIGURATION_TABLE_LOCAL_APIC_INTERRUPT_FLAGS_POLARITY_ACTIVE_LOW:
-                        printk("Polarity: active low\n");
-                        break;
-                    case MP_CONFIGURATION_TABLE_LOCAL_APIC_INTERRUPT_FLAGS_POLARITY_ACTIVE_HIGH:
-                        printk("Polarity: active high\n");
-                        break;
-                }
-                switch ((local_apic_interrupt_entry->interrupt_flags >> MP_CONFIGURATION_TABLE_LOCAL_APIC_INTERRUPT_FLAGS_TRIGGER_MODE_SHIFT) & MP_CONFIGURATION_TABLE_LOCAL_APIC_INTERRUPT_FLAGS_TRIGGER_MODE_MASK) {
-                    case MP_CONFIGURATION_TABLE_LOCAL_APIC_INTERRUPT_FLAGS_TRIGGER_MODE_CONFORMS_TO_BUS_SPECIFICATION:
-                        printk("Trigger mode: conforms to bus specification\n");
-                        break;
-                    case MP_CONFIGURATION_TABLE_LOCAL_APIC_INTERRUPT_FLAGS_TRIGGER_MODE_EDGE_TRIGGERED:
-                        printk("Trigger mode: edge triggered\n");
-                        break;
-                    case MP_CONFIGURATION_TABLE_LOCAL_APIC_INTERRUPT_FLAGS_TRIGGER_MODE_LEVEL_TRIGGERED:
-                        printk("Trigger mode: level triggered\n");
-                        break;
-                }
-                printk("Source bus id: %x\nSource bus IRQ:%x\nDestination local apic id: %x\nDestination local apic LINTIN#: %x\n_____________\n", local_apic_interrupt_entry->source_bus_id, local_apic_interrupt_entry->source_bus_irq, local_apic_interrupt_entry->destination_local_apic_id, local_apic_interrupt_entry->destination_local_apic_lintin);
                 entry += sizeof(mp_configuration_table_local_apic_interrupt_entry_t);
                 break;
         }
     }
+    cpu_data = (cpu_data_t*) b_malloc(sizeof(cpu_data_t) * num_cpus);
+    memset(cpu_data, 0x0, sizeof(cpu_data_t) * 4);
+    if (!cpu_data) {
+        panic("[KERNEL]: Failed to allocate memory! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
+    }
+    for (size_t i = 0; i < num_entries; i++) {
+        switch(*saved_entry) {
+            case MP_CONFIGURATION_TABLE_PROCESSOR_ENTRY_TYPE:
+                mp_configuration_table_processor_entry_t *processor_entry = (mp_configuration_table_processor_entry_t*) saved_entry;
+                if (processor_entry->cpu_flags & MP_CONFIGURATION_TABLE_PROCESSOR_ENTRY_CPU_FLAGS_PROCESSOR_USABLE) {
+                    cpu_data->lapic_id = processor_entry->local_apic_id;
+                    if ((processor_entry->cpu_flags >> MP_CONFIGURATION_TABLE_PROCESSOR_ENTRY_CPU_FLAGS_PROCESSOR_IS_BSP_SHIFT) & MP_CONFIGURATION_TABLE_PROCESSOR_ENTRY_CPU_FLAGS_PROCESSOR_IS_BSP) {
+                        cpu_data->bsp = 1;
+                    }
+                    cpu_data++;
+                }
+                saved_entry += sizeof(mp_configuration_table_processor_entry_t);
+                break;
+            case MP_CONFIGURATION_TABLE_BUS_ENTRY_TYPE:
+                saved_entry += sizeof(mp_configuration_table_bus_entry_t);
+                break;
+            case MP_CONFIGURATION_TABLE_IO_APIC_ENTRY_TYPE:
+                mp_configuration_table_io_apic_entry_t *io_apic_entry = (mp_configuration_table_io_apic_entry_t*) saved_entry;
+                if (io_apic_entry->io_apic_flags & MP_CONFIGURATION_TABLE_IO_APIC_FLAGS_USABLE) {
+                }
+                saved_entry += sizeof(mp_configuration_table_io_apic_entry_t);
+                break;
+            case  MP_CONFIGURATION_TABLE_IO_APIC_INTERRUPT_ENTRY:
+                saved_entry += sizeof(mp_configuration_table_io_apic_interrupt_entry_t);
+                break;
+            case  MP_CONFIGURATION_TABLE_LOCAL_APIC_INTERRUPT_ENTRY:
+                saved_entry += sizeof(mp_configuration_table_local_apic_interrupt_entry_t);
+                break;
+        }
+    }
+    cpu_data -= num_cpus;
 }
 
 /*
@@ -200,22 +147,17 @@ void mp_init() {
         }
     }
     valid_floating_pointer_structure:
-        printk("_____________\nMP floating pointer structure found at: %x\nMP specification revision: %s\n%s\n", mp, mp->specification_revision == MP_FLOATING_POINTER_STRUCTURE_SPEC_REVISION_1_1 ? "1.1" : "1.4", (mp->mp_feature_bytes[1] >> MP_FLOATING_POINTER_STRUCTURE_IMCRP_SHIFT) & MP_FLOATING_POINTER_STRUCTURE_IMCR_PRESENT ? "IMCR present PIC mode implemented" : "IMCR not present virtual wire mode implemented");
         if (mp->mp_feature_bytes[0] == MP_FLOATiNG_POINTER_STRUCTURE_MP_CONFIGURATION_TABLE_PRESENT) {
-            printk("MP configuration table physical address: %x\n_____________\n", mp->mp_configuration_table_header_address);
             mp_configuration_table_header_t *mp_config = (mp_configuration_table_header_t*) PHYSICAL_TO_VIRTUAL(mp->mp_configuration_table_header_address);
             if (memcmp(mp_config->signature, MP_CONFIGURATION_TABLE_SIGNATURE, MP_CONFIGURATION_TABLE_SIGNATURE_SIZE) == 0 && checksum((void*) mp_config, mp_config->base_table_length) == 0) {
-                printk("MP configuration header table found:\nOem id: %s\nProduct id: %s\nLocal apic physical address: %x\n", mp_config->oem_id, mp_config->product_id, mp_config->local_apic_address);
-                print_table((uint8_t*) (mp_config + 1), mp_config->entry_count);    
+                init_cpu_data((uint8_t*) (mp_config + 1), mp_config->entry_count);
+                if (num_cpus > 0) {
+                    local_apic_address = mp_config->local_apic_address;
+                    smp = true;
+                } 
             }
-            else {
-                printk("Invalid configuration table found!\n");
-            }
-        }
-        else {
-            printk("MP default configurations not yet supported!");
         }
         return;
     mp_not_compliant:
-        printk("System is not MP compliant!\n");
+        return;
 }

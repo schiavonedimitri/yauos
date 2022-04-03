@@ -7,8 +7,6 @@
 #define KERNEL_HEAP_SIZE 0x4000000
 #endif
 
-extern uintptr_t _KERNEL_END_;
-
 typedef long Align;
 
 typedef union header {

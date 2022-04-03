@@ -9,7 +9,8 @@
         "random": "c",
         "mp.h": "c",
         "vm.h": "c",
-        "paging.h": "c"
+        "paging.h": "c",
+        "pm.h": "c"
     },
     "git.enableCommitSigning": true
 }

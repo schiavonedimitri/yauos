@@ -1,5 +1,7 @@
+#include <arch/cpu/cpu.h>
 #include <arch/cpu/gdt.h>
 
+extern cpu_data_t *cpu_data;
 extern void load_gdt(gdt_descriptor_t*);
 static gdt_descriptor_t gdt_descriptor;
 

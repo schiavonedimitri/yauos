@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <arch/align.h>
+#include <arch/cpu/cpu.h>
 #include <arch/cpu/mp.h>
 #include <arch/types.h>
 #include <kernel/bootconsole.h>
@@ -8,6 +9,7 @@
 #include <kernel/bootinfo.h>
 #include <kernel/bootmem.h>
 #include <kernel/printk.h>
+#include <kernel/mm/kmalloc.h>
 #include <lib/string.h>
 #include <platform/multiboot2.h>
 
@@ -19,7 +21,6 @@ extern void pmm_init(bootinfo_t*);
 extern void kernel_main(bootinfo_t*);
 
 bootinfo_t *boot_info;
-bool smp = 0;
 
 static void parse_cmdline(multiboot2_information_header_t *m_boot2_info) {
 	boot_info->karg_entries = 0;
@@ -312,12 +313,19 @@ void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	// Parse the multiboot2 memory map and format it according to the way the upper kernel layer expects it.
 	parse_memory_map(m_boot2_info);	
 	pmm_init(boot_info);
-	// Setup GDT
+	mp_init();
+	if (smp) {
+		printk("System is MP compliant!\nFound %d cpus!\n", num_cpus);
+		for (size_t i = 0; i < num_cpus; i++) {
+			printk("CPU [%s] with ID: %x\n", cpu_data[i].bsp ? "BSP" : "AP", cpu_data[i].lapic_id);
+		}
+		printk("local apic physical address on each cpu is: %x\n", local_apic_address);
+	}
+	// Setup GDT must come after mp_init().
 	gdt_init();
 	// Setup IDT
 	idt_init();
 	// spinlock.h
 	smp = 0;
-	mp_init();
 	kernel_main(boot_info);
 }
