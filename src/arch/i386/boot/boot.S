@@ -7,7 +7,7 @@
 		# Multiboot2 magic
 		.long 0xE85250D6
 		# Multiboot2 architecture, 0 for i386
-		.long 0x0
+		.long 0
 		# Multiboot2 header length
 		.long (header_end - header_start)
 		# Multiboot2 checksum -(magic + architecture + length)
@@ -15,11 +15,11 @@
 		# Multiboot2 tags, must be 8 byte aligned and end with a tag of type 0 and size 8
 	.align 0x8
 		# Multiboot2 terminating tag type
-		.short 0x0
+		.short 0
 		# Multiboot2 terminating tag flags
-		.short 0x0
+		.short 0
 		# Multiboot2 terminating tag size
-		.long 0x8
+		.long 8
 	header_end:
 
 # The Multiboot2 spec states that the machine state after loading the kernel is as follows:
@@ -50,23 +50,23 @@
 
 .section .bss
 	# This is going to be an area of EARLY_HEAP_SIZE bytes used for memory allocation early in the boot stage. Among other things it will be used to booststrap the physical memory system itself.
-	.align 0x1000
+	.align 4096
 	bootmem_start:
 	.skip EARLY_HEAP_SIZE
 	bootmem_end:
 	# This is going to be the location of the kernel page directory which will be used throughout the rest of the kernel.
-	.align 0x1000
+	.align 4096
 	kernel_directory:
-	.skip 0x1000
+	.skip 4096
 	# Location of the first page table (4Kb) that maps the first 4Mb physical addresses starting from 0x00000000.
 	# This memory will be reused in higher layers of the kernel initialization.
-	.align 0x1000
+	.align 4096
 	kernel_boot_page_table:
-		.skip 0x1000
+		.skip 4096
 	# Initial stack for the kernel.
-	.align 0x4
+	.align 4
 	stack_bottom:
-		.skip 0x1000
+		.skip 4096
 	stack_top:
 
 .extern _KERNEL_TEXT_START_
@@ -97,8 +97,8 @@
 		movl %esi, %edx
 		orl $0x3, %edx
 		movl %edx, (%edi)
-		addl $0x1000, %esi
-		addl $0x4, %edi
+		addl $4096, %esi
+		addl $4, %edi
 		cmpl %ecx, %esi
 		jne 1b
 		# 2) Map from _KERNEL_TEXT_START_ to _KERNEL_DATA_START_ R.
@@ -107,15 +107,15 @@
 		movl %esi, %edx
 		orl $0x1, %edx
 		movl %edx, (%edi)
-		addl $0x1000, %esi
-		addl $0x4, %edi
+		addl $4096, %esi
+		addl $4, %edi
 		cmpl %ecx, %esi
 		jne 1b
 		# Calculate how many pages have been mapped of the 512 we wanted to map.
 		pushl %edi
 		subl $VIRTUAL_TO_PHYSICAL(kernel_boot_page_table), %edi
 		shr $0x2, %edi
-		movl $0x200, %edx
+		movl $512, %edx
 		subl %edi, %edx
 		movl %edx, %ecx
 		popl %edi
@@ -125,28 +125,29 @@
 		movl %esi, %edx
 		orl $0x3, %edx
 		movl %edx, (%edi)
-		addl $0x1000, %esi
-		addl $0x4, %edi
+		addl $4096, %esi
+		addl $4, %edi
 		loop 1b
 		# Remap video display memory (0xA0000 - 0xC0000) with caching disabled.
-		movl $(VIRTUAL_TO_PHYSICAL(kernel_boot_page_table) + 0xA0 * 0x4), %edi
+		# 0xA0000 index is 160 in the page table.
+		movl $(VIRTUAL_TO_PHYSICAL(kernel_boot_page_table) + 160 * 4), %edi
 		movl $0xC0000, %ecx
 		movl $0xA0000, %esi
 	1:
 		movl %esi, %edx
 		orl $0x13, %edx
 		movl %edx, (%edi)
-		addl $0x1000, %esi
-		addl $0x4, %edi
+		addl $4096, %esi
+		addl $4, %edi
 		cmpl %ecx, %esi
 		jne 1b
 		# The first directory entry is needed for identity mapping physical addresses to virtual addresses.
 		# This is needed in order to avoid a triple fault on the instruction that jumps to the virtual addresses after enabling paging (which is still in lower addresses).
 		movl $(VIRTUAL_TO_PHYSICAL(kernel_boot_page_table) + 0x3), VIRTUAL_TO_PHYSICAL(kernel_directory)
 		# Actual directory that performs the required mapping to 0xC0000000.
-		movl $(VIRTUAL_TO_PHYSICAL(kernel_boot_page_table) + 0x3), VIRTUAL_TO_PHYSICAL(kernel_directory) + 0x300 * 0x4
+		movl $(VIRTUAL_TO_PHYSICAL(kernel_boot_page_table) + 0x3), VIRTUAL_TO_PHYSICAL(kernel_directory) + 768 * 4
 		# Recurive directory entry.
-		movl $(VIRTUAL_TO_PHYSICAL(kernel_directory) + 0x3), VIRTUAL_TO_PHYSICAL(kernel_directory) + 0x3FF * 0x4
+		movl $(VIRTUAL_TO_PHYSICAL(kernel_directory) + 0x3), VIRTUAL_TO_PHYSICAL(kernel_directory) + 1023 * 4
 		movl $(VIRTUAL_TO_PHYSICAL(kernel_directory)), %ecx
 		# Pointing cr3 to the kernel directory just created.
 		movl %ecx, %cr3

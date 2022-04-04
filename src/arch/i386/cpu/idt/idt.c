@@ -66,16 +66,16 @@ static idt_entry_t idt[256];
 void idt_set_entry(uint8_t num, uint32_t handler, uint8_t type, uint8_t dpl) {
 	idt[num].offset_0_15 = handler & 0xFFFF;
 	idt[num].segment_selector = GDT_KERNEL_CODE_OFFSET;
-	idt[num].reserved = 0x0;
+	idt[num].reserved = 0;
 	idt[num].gate_type = type;
-	idt[num].zero = 0x0;
+	idt[num].zero = 0;
 	idt[num].dpl = dpl;
-	idt[num].present = 0x1;
-	idt[num].offset_48_63 = (handler >> 0x10) & 0xFFFF;
+	idt[num].present = 1;
+	idt[num].offset_48_63 = (handler >> 16) & 0xFFFF;
 }
 
 void idt_init() {
-	memset(&idt, 0x0, sizeof(idt_entry_t) * 256);
+	memset(&idt, 0, sizeof(idt_entry_t) * 256);
 	idt[0] = IDT_GATE((uint32_t) isr_no_err_stub_0, INTERRUPT_GATE, DPL_KERNEL);
 	idt[1] = IDT_GATE((uint32_t) isr_no_err_stub_1, INTERRUPT_GATE, DPL_KERNEL);
 	idt[2] = IDT_GATE((uint32_t) isr_no_err_stub_2, INTERRUPT_GATE, DPL_KERNEL);

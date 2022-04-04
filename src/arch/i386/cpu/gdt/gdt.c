@@ -22,16 +22,31 @@ static gdt_entry_t gdt[8192];
  */
 
 void set_gdt_entry(uint16_t number, uint32_t base, uint32_t limit, uint8_t access, uint8_t flags) {
-
+	gdt[number].limit_0_15 = limit & 0xFFFF;
+	gdt[number].base_0_15 = base & 0xFFFF;
+	gdt[number].base_16_23 = (base >> 16) & 0xFF;
+	gdt[number].accessed = 0;
+	gdt[number].readable_or_writable = (flags >> 1) & 0x1;
+	gdt[number].conforming_or_expand_down = (flags >> 2) & 0x1;
+	gdt[number].type = (flags >> 3) & 0x1;
+	gdt[number].s = (flags >> 4) & 0x1;
+	gdt[number].descriptor_privilege_level = (flags >> 5) & 0x3;
+	gdt[number].present = (flags >> 7) & 0x1;
+	gdt[number].limit_16_19 = limit >> 28;
+	gdt[number].available = 0;
+	gdt[number].reserved = 0;
+	gdt[number].default_operand_size_or_big = (access >> 2) & 0x1;
+	gdt[number].granularity = (access >> 3) & 0x1;
+	gdt[number].base_24_31 = base >> 24;
 }
 
 void gdt_init() {
 	memset(&gdt, 0x0, sizeof(gdt_entry_t) * 8192);
-	// Add basic entries
+	// Add default entries
 	gdt[0] = SEGMENT_NULL;
-	gdt[1] = SEGMENT_KCODE(0x0, 0xFFFFFFFF);
-	gdt[2] = SEGMENT_KDATA(0x0, 0xFFFFFFFF);
-	gdt_descriptor.table_size = (sizeof(gdt_entry_t) * 0x3) - 0x1;
+	gdt[1] = SEGMENT_KCODE(0, 0xFFFFFFFF);
+	gdt[2] = SEGMENT_KDATA(0, 0xFFFFFFFF);
+	gdt_descriptor.table_size = (sizeof(gdt_entry_t) * 3) - 1;
 	gdt_descriptor.table_address = &gdt[0];
 	load_gdt(&gdt_descriptor);
 }
