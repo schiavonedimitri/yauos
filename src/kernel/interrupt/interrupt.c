@@ -10,7 +10,6 @@
 static interrupt_handler_t interrupt_handler_table[256];
 
 void interrupt_handler(interrupt_context_t *context) {
-    printk("interrupt fired: %d\n", context->interrupt_number);
     if (context->interrupt_number == 14) {
         panic("Page fault at address: %x\n", read_cr2());
     }
@@ -34,7 +33,9 @@ void interrupt_handler(interrupt_context_t *context) {
         }
     }
     interrupt_handler_t handler = interrupt_handler_table[context->interrupt_number];
-    handler(context);
+    if (handler != NULL) {
+        handler(context);
+    }
     if (context->interrupt_number >= 40) {
         pic_send_eoi(PIC2_COMMAND_PORT);
     }

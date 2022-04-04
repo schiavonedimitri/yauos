@@ -13,7 +13,7 @@ typedef struct cpu_data {
 
 extern cpu_data_t *cpu_data;
 extern uint8_t num_cpus;
-extern phys_addr_t local_apic_address;
+extern virt_addr_t local_apic_address;
 
 // xchg.S
 extern uint32_t _xchg(uint32_t, volatile uint32_t*);

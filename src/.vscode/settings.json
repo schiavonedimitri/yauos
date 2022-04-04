@@ -10,7 +10,9 @@
         "mp.h": "c",
         "vm.h": "c",
         "paging.h": "c",
-        "pm.h": "c"
+        "pm.h": "c",
+        "idt.h": "c",
+        "gdt.h": "c"
     },
     "git.enableCommitSigning": true
 }

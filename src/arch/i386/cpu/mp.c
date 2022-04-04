@@ -4,6 +4,7 @@
 #include <arch/align.h>
 #include <arch/cpu/cpu.h>
 #include <arch/cpu/mp.h>
+#include <arch/kernel/mm/vm.h>
 #include <arch/mmu.h>
 #include <kernel/bootmem.h>
 #include <kernel/printk.h>
@@ -11,7 +12,7 @@
 
 cpu_data_t *cpu_data;
 uint8_t num_cpus = 0;
-phys_addr_t local_apic_address = 0;
+virt_addr_t local_apic_address = 0;
 bool smp = 0;
 
 static uint8_t checksum(void* addr, size_t len) {
@@ -27,10 +28,8 @@ static mp_floating_pointer_structure_t* mp_floating_pointer_structure_search(voi
     mp_floating_pointer_structure_t *ret = NULL;
     uint8_t *end_address = (uint8_t*) addr + length;
     for (uint8_t *mp = (uint8_t*) ALIGN(addr, 16); mp < end_address; mp += sizeof(mp_floating_pointer_structure_t)) {
-        if (memcmp(mp, MP_FLOATING_POINTER_STRUCTURE_SIGNATURE, 4) == 0) { 
-            if (checksum((void*) mp, sizeof(mp_floating_pointer_structure_t)) == 0) {
-                ret = (mp_floating_pointer_structure_t*) mp;
-            }
+        if (memcmp(mp, MP_FLOATING_POINTER_STRUCTURE_SIGNATURE, 4) == 0 && checksum((void*) mp, sizeof(mp_floating_pointer_structure_t)) == 0) { 
+            ret = (mp_floating_pointer_structure_t*) mp;
         }
     }
     return ret;
@@ -65,10 +64,10 @@ static void init_cpu_data(uint8_t *entry, size_t num_entries) {
         }
     }
     cpu_data = (cpu_data_t*) b_malloc(sizeof(cpu_data_t) * num_cpus);
-    memset(cpu_data, 0x0, sizeof(cpu_data_t) * 4);
     if (!cpu_data) {
         panic("[KERNEL]: Failed to allocate memory! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
     }
+    memset(cpu_data, 0x0, sizeof(cpu_data_t) * num_cpus);
     for (size_t i = 0; i < num_entries; i++) {
         switch(*saved_entry) {
             case MP_CONFIGURATION_TABLE_PROCESSOR_ENTRY_TYPE:
@@ -152,6 +151,8 @@ void mp_init() {
             if (memcmp(mp_config->signature, MP_CONFIGURATION_TABLE_SIGNATURE, MP_CONFIGURATION_TABLE_SIGNATURE_SIZE) == 0 && checksum((void*) mp_config, mp_config->base_table_length) == 0) {
                 init_cpu_data((uint8_t*) (mp_config + 1), mp_config->entry_count);
                 if (num_cpus > 0) {
+                    // Identity mapping local apic address to the same virtual address.
+                    map_page(mp_config->local_apic_address, mp_config->local_apic_address, PROT_PRESENT | PROT_READ_WRITE | PROT_KERN);
                     local_apic_address = mp_config->local_apic_address;
                     smp = true;
                 } 

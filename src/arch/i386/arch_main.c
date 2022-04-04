@@ -8,10 +8,13 @@
 #include <kernel/assert.h>
 #include <kernel/bootinfo.h>
 #include <kernel/bootmem.h>
+#include <kernel/interrupt.h>
 #include <kernel/printk.h>
 #include <kernel/mm/kmalloc.h>
 #include <lib/string.h>
 #include <platform/multiboot2.h>
+#include <platform/pic.h>
+#include <platform/pit.h>
 
 extern void gdt_init();
 extern void idt_init();
@@ -124,9 +127,7 @@ static void parse_memory_map(multiboot2_information_header_t *m_boot2_info) {
 	multiboot2_tag_header_t *tag;
 	/*
 	 * Copy the memory map provided by the bootloader to the kernel bootinfo structure.
-	 * Note: this kernel does not support real mode applications or vm86 tasks, so memory 
-	 * starting at 0x0 (if it is reported to exist) is freely used.
-	 * Note 2: Since this is a hobby educational project mainly used to learn by doing
+	 * Note: Since this is a hobby educational project mainly used to learn by doing
 	 * not all possible scenarios have been covered and some assumptions that simplify coding have been made.
 	 * One of these assumptions is that the firmware provides a sane memory map.
 	 * This code has been run mainly on Qemu and it's memory map looks sane enough.
@@ -287,6 +288,20 @@ static void boot_console_init() {
 	}
 }
 
+static volatile uint32_t elapsed_milliseconds = 0;
+
+void timer_callback(interrupt_context_t *context) {
+	elapsed_milliseconds++;
+	pit_interrupt_on_terminal_count(1200);
+}
+
+void delay(uint32_t ms) {
+	uint32_t end = elapsed_milliseconds + ms;
+	while (elapsed_milliseconds < end) {
+		halt();
+	}
+}
+
 /*
  * This is the kernel architecture specific entry point after the early boot code.
  * Here the first steps of initialization are done: architecture specific initialization (GDT, IDT, etc...), reading the memory map and formatting it in the kernel expected way,
@@ -294,7 +309,19 @@ static void boot_console_init() {
  */
 
 void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
-	// Setup initial bootconsole device to the memory ringbuffer for early output.
+	/*
+	 * Gdt and idt are the first steps of initialization to be able to catch any early kernel exceptions (bugs, hopefully none)
+	 * and panic.
+	 */
+	// Base gdt initialization.
+	gdt_init();
+	// Base idt initialization.
+	idt_init();
+	/* 
+	 * Setup initial bootconsole device to the memory ringbuffer for early output.
+	 * The bootconsole is the first thing initialized after gdt and idt to have significant output in case of boot failure or in case 
+	 * of in kernel bugs (exceptions). Only after the multiboot2 magic code is checked the rest of the initialization can proceed.
+	 */
 	bootconsole_init(BOOTCONSOLE_MEM);
 	boot_info = (bootinfo_t*) b_malloc(sizeof(bootinfo_t));
 	if (!boot_info) {
@@ -313,19 +340,28 @@ void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	// Parse the multiboot2 memory map and format it according to the way the upper kernel layer expects it.
 	parse_memory_map(m_boot2_info);	
 	pmm_init(boot_info);
+	// Pic initialization.
+	pic_init();
 	mp_init();
 	if (smp) {
 		printk("System is MP compliant!\nFound %d cpus!\n", num_cpus);
 		for (size_t i = 0; i < num_cpus; i++) {
 			printk("CPU [%s] with ID: %x\n", cpu_data[i].bsp ? "BSP" : "AP", cpu_data[i].lapic_id);
 		}
-		printk("local apic physical address on each cpu is: %x\n", local_apic_address);
+		printk("local apic physical address (identity mapped) on each cpu is: %x\n", local_apic_address);
+		/* 
+		 * At this point there should be lapic initialization and ap cpus initialization code.
+		 * For now there's only the delay code ready that uses the pit facility (for the intel universal ap wake up algorithm).
+		 */
+		register_interrupt_handler(32, timer_callback);
+		pic_enable_irq_line(0);
+		sti();
+		// TODO: here should go ap STARTUP IPIS and INIT IPIS code and delays.
+		// For now this is just an hard value determined manually to have 1ms interrupts.
+		pit_interrupt_on_terminal_count(1200);
+		// For now just leaving this as test.
+		delay(50);
+		printk("Delayed 50 milliseconds!\n");	
 	}
-	// Setup GDT must come after mp_init().
-	gdt_init();
-	// Setup IDT
-	idt_init();
-	// spinlock.h
-	smp = 0;
 	kernel_main(boot_info);
 }

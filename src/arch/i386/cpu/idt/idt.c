@@ -2,6 +2,11 @@
 #include <lib/string.h>
 
 extern void load_idt(idt_descriptor_t*);
+
+/*
+ * Standard i386 cpu exceptions.
+ * Defined in isr_low.S
+ */
 extern void isr_no_err_stub_0(void);
 extern void isr_no_err_stub_1(void);
 extern void isr_no_err_stub_2(void);
@@ -51,9 +56,14 @@ extern void isr_no_err_stub_45(void);
 extern void isr_no_err_stub_46(void);
 
 static idt_descriptor_t idt_descriptor;
+
+/*
+ * Defining a static array of idt entries of 256 entries, which is the maximum number
+ * supported on i386.
+ */
 static idt_entry_t idt[256];
 
-static void idt_set_entry(uint8_t num, uint32_t handler, uint8_t type, uint8_t dpl) {
+void idt_set_entry(uint8_t num, uint32_t handler, uint8_t type, uint8_t dpl) {
 	idt[num].offset_0_15 = handler & 0xFFFF;
 	idt[num].segment_selector = GDT_KERNEL_CODE_OFFSET;
 	idt[num].reserved = 0x0;
@@ -61,58 +71,58 @@ static void idt_set_entry(uint8_t num, uint32_t handler, uint8_t type, uint8_t d
 	idt[num].zero = 0x0;
 	idt[num].dpl = dpl;
 	idt[num].present = 0x1;
-	idt[num].offset_48_63 = (handler >> 16) & 0xFFFF;
+	idt[num].offset_48_63 = (handler >> 0x10) & 0xFFFF;
 }
 
 void idt_init() {
 	memset(&idt, 0x0, sizeof(idt_entry_t) * 256);
-	idt_set_entry(0, (uint32_t) isr_no_err_stub_0, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(1, (uint32_t) isr_no_err_stub_1, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(2, (uint32_t) isr_no_err_stub_2, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(3, (uint32_t) isr_no_err_stub_3, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(4, (uint32_t) isr_no_err_stub_4, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(5, (uint32_t) isr_no_err_stub_5, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(6, (uint32_t) isr_no_err_stub_6, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(7, (uint32_t) isr_no_err_stub_7, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(8, (uint32_t) isr_err_stub_8, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(9, (uint32_t) isr_no_err_stub_9, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(10, (uint32_t) isr_err_stub_10, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(11, (uint32_t) isr_err_stub_11, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(12, (uint32_t) isr_err_stub_12, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(13, (uint32_t) isr_err_stub_13, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(14, (uint32_t) isr_err_stub_14, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(15, (uint32_t) isr_no_err_stub_15, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(16, (uint32_t) isr_no_err_stub_16, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(17, (uint32_t) isr_err_stub_17, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(18, (uint32_t) isr_no_err_stub_18, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(19, (uint32_t) isr_no_err_stub_19, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(20, (uint32_t) isr_no_err_stub_20, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(21, (uint32_t) isr_err_stub_21, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(22, (uint32_t) isr_no_err_stub_22, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(23, (uint32_t) isr_no_err_stub_23, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(24, (uint32_t) isr_no_err_stub_24, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(25, (uint32_t) isr_no_err_stub_25, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(26, (uint32_t) isr_no_err_stub_26, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(27, (uint32_t) isr_no_err_stub_27, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(28, (uint32_t) isr_no_err_stub_28, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(29, (uint32_t) isr_err_stub_29, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(30, (uint32_t) isr_err_stub_30, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(31, (uint32_t) isr_no_err_stub_31, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(32, (uint32_t) isr_no_err_stub_32, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(33, (uint32_t) isr_no_err_stub_33, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(34, (uint32_t) isr_no_err_stub_34, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(35, (uint32_t) isr_no_err_stub_35, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(36, (uint32_t) isr_no_err_stub_36, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(37, (uint32_t) isr_no_err_stub_37, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(38, (uint32_t) isr_no_err_stub_38, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(39, (uint32_t) isr_no_err_stub_39, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(40, (uint32_t) isr_no_err_stub_40, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(41, (uint32_t) isr_no_err_stub_41, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(42, (uint32_t) isr_no_err_stub_42, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(43, (uint32_t) isr_no_err_stub_43, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(44, (uint32_t) isr_no_err_stub_44, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(45, (uint32_t) isr_no_err_stub_45, INTERRUPT_GATE, DPL_KERNEL);
-	idt_set_entry(46, (uint32_t) isr_no_err_stub_46, INTERRUPT_GATE, DPL_KERNEL);
+	idt[0] = IDT_GATE((uint32_t) isr_no_err_stub_0, INTERRUPT_GATE, DPL_KERNEL);
+	idt[1] = IDT_GATE((uint32_t) isr_no_err_stub_1, INTERRUPT_GATE, DPL_KERNEL);
+	idt[2] = IDT_GATE((uint32_t) isr_no_err_stub_2, INTERRUPT_GATE, DPL_KERNEL);
+	idt[3] = IDT_GATE((uint32_t) isr_no_err_stub_3, INTERRUPT_GATE, DPL_KERNEL);
+	idt[4] = IDT_GATE((uint32_t) isr_no_err_stub_4, INTERRUPT_GATE, DPL_KERNEL);
+	idt[5] = IDT_GATE((uint32_t) isr_no_err_stub_5, INTERRUPT_GATE, DPL_KERNEL);
+	idt[6] = IDT_GATE((uint32_t) isr_no_err_stub_6, INTERRUPT_GATE, DPL_KERNEL);
+	idt[7] = IDT_GATE((uint32_t) isr_no_err_stub_7, INTERRUPT_GATE, DPL_KERNEL);
+	idt[8] = IDT_GATE((uint32_t) isr_err_stub_8, INTERRUPT_GATE, DPL_KERNEL);
+	idt[9] = IDT_GATE((uint32_t) isr_no_err_stub_9, INTERRUPT_GATE, DPL_KERNEL);
+	idt[10] = IDT_GATE((uint32_t) isr_err_stub_10, INTERRUPT_GATE, DPL_KERNEL);
+	idt[11] = IDT_GATE((uint32_t) isr_err_stub_11, INTERRUPT_GATE, DPL_KERNEL);
+	idt[12] = IDT_GATE((uint32_t) isr_err_stub_12, INTERRUPT_GATE, DPL_KERNEL);
+	idt[13] = IDT_GATE((uint32_t) isr_err_stub_13, INTERRUPT_GATE, DPL_KERNEL);
+	idt[14] = IDT_GATE((uint32_t) isr_err_stub_14, INTERRUPT_GATE, DPL_KERNEL);
+	idt[15] = IDT_GATE((uint32_t) isr_no_err_stub_15, INTERRUPT_GATE, DPL_KERNEL);
+	idt[16] = IDT_GATE((uint32_t) isr_no_err_stub_16, INTERRUPT_GATE, DPL_KERNEL);
+	idt[17] = IDT_GATE((uint32_t) isr_err_stub_17, INTERRUPT_GATE, DPL_KERNEL);
+	idt[18] = IDT_GATE((uint32_t) isr_no_err_stub_18, INTERRUPT_GATE, DPL_KERNEL);
+	idt[19] = IDT_GATE((uint32_t) isr_no_err_stub_19, INTERRUPT_GATE, DPL_KERNEL);
+	idt[20] = IDT_GATE((uint32_t) isr_no_err_stub_20, INTERRUPT_GATE, DPL_KERNEL);
+	idt[21] = IDT_GATE((uint32_t) isr_err_stub_21, INTERRUPT_GATE, DPL_KERNEL);
+	idt[22] = IDT_GATE((uint32_t) isr_no_err_stub_22, INTERRUPT_GATE, DPL_KERNEL);
+	idt[23] = IDT_GATE((uint32_t) isr_no_err_stub_23, INTERRUPT_GATE, DPL_KERNEL);
+	idt[24] = IDT_GATE((uint32_t) isr_no_err_stub_24, INTERRUPT_GATE, DPL_KERNEL);
+	idt[25] = IDT_GATE((uint32_t) isr_no_err_stub_25, INTERRUPT_GATE, DPL_KERNEL);
+	idt[26] = IDT_GATE((uint32_t) isr_no_err_stub_26, INTERRUPT_GATE, DPL_KERNEL);
+	idt[27] = IDT_GATE((uint32_t) isr_no_err_stub_27, INTERRUPT_GATE, DPL_KERNEL);
+	idt[28] = IDT_GATE((uint32_t) isr_no_err_stub_28, INTERRUPT_GATE, DPL_KERNEL);
+	idt[29] = IDT_GATE((uint32_t) isr_err_stub_29, INTERRUPT_GATE, DPL_KERNEL);
+	idt[30] = IDT_GATE((uint32_t) isr_err_stub_30, INTERRUPT_GATE, DPL_KERNEL);
+	idt[31] = IDT_GATE((uint32_t) isr_no_err_stub_31, INTERRUPT_GATE, DPL_KERNEL);
+	idt[32] = IDT_GATE((uint32_t) isr_no_err_stub_32, INTERRUPT_GATE, DPL_KERNEL);
+	idt[33] = IDT_GATE((uint32_t) isr_no_err_stub_33, INTERRUPT_GATE, DPL_KERNEL);
+	idt[34] = IDT_GATE((uint32_t) isr_no_err_stub_34, INTERRUPT_GATE, DPL_KERNEL);
+	idt[35] = IDT_GATE((uint32_t) isr_no_err_stub_35, INTERRUPT_GATE, DPL_KERNEL);
+	idt[36] = IDT_GATE((uint32_t) isr_no_err_stub_36, INTERRUPT_GATE, DPL_KERNEL);
+	idt[37] = IDT_GATE((uint32_t) isr_no_err_stub_37, INTERRUPT_GATE, DPL_KERNEL);
+	idt[38] = IDT_GATE((uint32_t) isr_no_err_stub_38, INTERRUPT_GATE, DPL_KERNEL);
+	idt[39] = IDT_GATE((uint32_t) isr_no_err_stub_39, INTERRUPT_GATE, DPL_KERNEL);
+	idt[40] = IDT_GATE((uint32_t) isr_no_err_stub_40, INTERRUPT_GATE, DPL_KERNEL);
+	idt[41] = IDT_GATE((uint32_t) isr_no_err_stub_41, INTERRUPT_GATE, DPL_KERNEL);
+	idt[42] = IDT_GATE((uint32_t) isr_no_err_stub_42, INTERRUPT_GATE, DPL_KERNEL);
+	idt[43] = IDT_GATE((uint32_t) isr_no_err_stub_43, INTERRUPT_GATE, DPL_KERNEL);
+	idt[44] = IDT_GATE((uint32_t) isr_no_err_stub_44, INTERRUPT_GATE, DPL_KERNEL);
+	idt[45] = IDT_GATE((uint32_t) isr_no_err_stub_45, INTERRUPT_GATE, DPL_KERNEL);
+	idt[46] = IDT_GATE((uint32_t) isr_no_err_stub_46, INTERRUPT_GATE, DPL_KERNEL);
 	idt_descriptor.table_size = (sizeof(idt_entry_t) * 256) - 1;
 	idt_descriptor.table_address = &idt[0];
 	load_idt(&idt_descriptor);
