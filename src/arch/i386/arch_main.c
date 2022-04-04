@@ -2,6 +2,8 @@
 #include <stdint.h>
 #include <arch/align.h>
 #include <arch/cpu/cpu.h>
+#include <arch/cpu/gdt.h>
+#include <arch/cpu/idt.h>
 #include <arch/cpu/mp.h>
 #include <arch/types.h>
 #include <kernel/bootconsole.h>
@@ -16,11 +18,11 @@
 #include <platform/pic.h>
 #include <platform/pit.h>
 
-extern void gdt_init();
-extern void idt_init();
 extern size_t bootconsole_mem_get_number_buffered_items();
 extern void bootconsole_mem_flush_buffer(char*);
+// Defined in kernel/pm.c
 extern void pmm_init(bootinfo_t*);
+// Arch independent entry point.
 extern void kernel_main(bootinfo_t*);
 
 bootinfo_t *boot_info;
@@ -288,13 +290,25 @@ static void boot_console_init() {
 	}
 }
 
+/*
+ * This is used to count milliseconds elapsed since the counter began counting.
+ */
 static volatile uint32_t elapsed_milliseconds = 0;
+
+
+/*
+ * This is used for the delays required for the smp ap startup code.
+ */
 
 void timer_callback(interrupt_context_t *context) {
 	elapsed_milliseconds++;
+	// For now the count value was obtained manually to get an IRQ every ~1ms.
 	pit_interrupt_on_terminal_count(1200);
 }
 
+/*
+ * This is used for delaying for a specified amount of milliseconds.
+ */
 void delay(uint32_t ms) {
 	uint32_t end = elapsed_milliseconds + ms;
 	while (elapsed_milliseconds < end) {
