@@ -66,9 +66,13 @@ CFILES+=$(shell find $(PLATFORM_DIR) -name '*.c')
 ASFILES:=$(shell find $(SRC_DIR) -not \( -path $(SRC_DIR)/arch -prune \) -name '*.S')
 ASFILES+=$(shell find $(ARCH_DIR) -not \( -path $(ARCH_DIR)/platform -prune \) -name '*.S')
 ASFILES+=$(shell find $(PLATFORM_DIR) -name '*.S')
+ASFILES:=$(filter-out $(ARCH_DIR)/boot/boot_ap.S, $(ASFILES))
 
 OBJS:=$(patsubst %.c, $(OBJ_DIR)/%.o, $(notdir $(CFILES)))
 OBJS+=$(patsubst %.S, $(OBJ_DIR)/%.o, $(notdir $(ASFILES)))
+OBJS:=$(filter-out $(OBJ_DIR)/boot_ap.o, $(OBJS))
+OBJS:=$(filter-out $(OBJ_DIR)/boot_ap_tmp.o, $(OBJS))
+
 
 VPATH=$(sort $(dir $(CFILES)) $(dir $(ASFILES)))
 
@@ -86,14 +90,21 @@ yauos: $(BIN_DIR)/yauos
 
 iso: $(ISO_DIR)/yauos.iso
 
-$(BIN_DIR)/yauos: $(OBJS) $(ARCH_DIR)/$(ARCH).ld
+$(BIN_DIR)/yauos: $(OBJS) $(ARCH_DIR)/$(ARCH).ld $(BIN_DIR)/boot_ap
 	@mkdir -p $(BIN_DIR)
-	$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(LINK_LIST)
+	@cp $(BIN_DIR)/boot_ap $(SRC_DIR)/
+	$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(LINK_LIST) -Xlinker -b binary boot_ap
 	@grub-file --is-x86-multiboot2 $(BIN_DIR)/yauos
+	@rm -f $(SRC_DIR)/boot_ap
 
 $(OBJ_DIR)/%.o : %.c
 	@mkdir -p $(OBJ_DIR)
 	$(CC) -c $< -o $@ $(CFLAGS)
+
+$(BIN_DIR)/boot_ap : $(ARCH_DIR)/boot/boot_ap.S
+	$(CC) $(CFLAGS) -c $< -o $(OBJ_DIR)/boot_ap.o
+	$(LD) -nostdlib -N -e _ap_start16 -Ttext 0x1000 -o $(OBJ_DIR)/boot_ap_tmp.o $(OBJ_DIR)/boot_ap.o
+	$(OBJCOPY) -S -O binary -j .text $(OBJ_DIR)/boot_ap_tmp.o $(BIN_DIR)/boot_ap
 
 $(OBJ_DIR)/%.o : %.S
 	@mkdir -p $(OBJ_DIR)

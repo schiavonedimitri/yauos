@@ -45,6 +45,8 @@ typedef struct idt_descriptor idt_descriptor_t;
 					(uint16_t) ((handler >> 0x10) & 0xFFFF) \
 	}
 
+void idt_init();
+
 /*
  * This function is used for addding/removing/modifying idt entries at runtime.
  * Mostly used after initialization by the kernel interrupt registration facilities for drivers.

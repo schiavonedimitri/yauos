@@ -5,6 +5,8 @@
 #include <arch/cpu/gdt.h>
 #include <arch/cpu/idt.h>
 #include <arch/cpu/mp.h>
+#include <arch/kernel/mm/vm.h>
+#include <arch/paging.h>
 #include <arch/types.h>
 #include <kernel/bootconsole.h>
 #include <kernel/assert.h>
@@ -12,12 +14,15 @@
 #include <kernel/bootmem.h>
 #include <kernel/interrupt.h>
 #include <kernel/printk.h>
-#include <kernel/mm/kmalloc.h>
+#include <kernel/mm/pm.h>
 #include <lib/string.h>
 #include <platform/multiboot2.h>
+#include <platform/lapic.h>
 #include <platform/pic.h>
 #include <platform/pit.h>
 
+extern uintptr_t _binary_boot_ap_start;
+extern uintptr_t _binary_boot_ap_size;
 extern size_t bootconsole_mem_get_number_buffered_items();
 extern void bootconsole_mem_flush_buffer(char*);
 // Defined in kernel/pm.c
@@ -26,6 +31,7 @@ extern void pmm_init(bootinfo_t*);
 extern void kernel_main(bootinfo_t*);
 
 bootinfo_t *boot_info;
+bool ap_started = 0;
 
 static void parse_cmdline(multiboot2_information_header_t *m_boot2_info) {
 	boot_info->karg_entries = 0;
@@ -291,6 +297,23 @@ static void boot_console_init() {
 }
 
 /*
+ * Code from here and beyond is just a mess that i was doing for testing smp booting.
+ * Now that i got it working it's time to properly setup things.
+ */
+
+
+/*
+ * This are just a page directory for the ap cpus and 2 page tables.
+ * The first page table is for mapping the first 2Mb physical RAM at virtual addresses 0xC0100000 and the identity map.
+ * Just like on the bsp cpu. The second page table is because i decided to allocate the ap cpus stacks starting at virtual
+ * address 0xD0000000.
+ */
+
+__attribute__((__aligned__(PAGE_SIZE))) page_directory_t ap_boot_page_directory;
+__attribute__((__aligned__(PAGE_SIZE)))page_table_t ap_boot_page_table_0;
+__attribute__((__aligned__(PAGE_SIZE)))page_table_t ap_boot_page_table_1;
+
+/*
  * This is used to count milliseconds elapsed since the counter began counting.
  */
 static volatile uint32_t elapsed_milliseconds = 0;
@@ -312,6 +335,14 @@ void timer_callback(interrupt_context_t *context) {
 void delay(uint32_t ms) {
 	uint32_t end = elapsed_milliseconds + ms;
 	while (elapsed_milliseconds < end) {
+		halt();
+	}
+}
+
+void ap_main() {
+	ap_started = 1;
+	printk("Ap started!\n");
+	while(1) {
 		halt();
 	}
 }
@@ -357,25 +388,81 @@ void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	// Pic initialization.
 	pic_init();
 	mp_init();
+	/* This messy shit was just for testing smp booting...now that it works it's time to organize things properly.
+	 * First i need to implement a virtual memory address space allocator for in kernel use because i cannot
+	 * randomly map physical addresses and remember them mentally.
+	 */
 	if (smp) {
 		printk("System is MP compliant!\nFound %d cpus!\n", num_cpus);
 		for (size_t i = 0; i < num_cpus; i++) {
 			printk("CPU [%s] with ID: %x\n", cpu_data[i].bsp ? "BSP" : "AP", cpu_data[i].lapic_id);
 		}
-		printk("local apic physical address (identity mapped) on each cpu is: %x\n", local_apic_address);
-		/* 
-		 * At this point there should be lapic initialization and ap cpus initialization code.
-		 * For now there's only the delay code ready that uses the pit facility (for the intel universal ap wake up algorithm).
-		 */
+		printk("local apic physical address (identity mapped) on each cpu is: %x\nStarting application processors...\n", local_apic_address);
+		lapic_init();
 		register_interrupt_handler(32, timer_callback);
 		pic_enable_irq_line(0);
 		sti();
-		// TODO: here should go ap STARTUP IPIS and INIT IPIS code and delays.
-		// For now this is just an hard value determined manually to have 1ms interrupts.
 		pit_interrupt_on_terminal_count(1200);
-		// For now just leaving this as test.
-		delay(50);
-		printk("Delayed 50 milliseconds!\n");	
+		void *dest = (void*) PHYSICAL_TO_VIRTUAL(0x1000);
+		memcpy(dest, &_binary_boot_ap_start, (size_t) &_binary_boot_ap_size);
+		// Map first 2Mb physical RAM.
+		for (size_t i = 0; i < 512; i++) {
+			ap_boot_page_table_0.entry[i].present = 1;
+			ap_boot_page_table_0.entry[i].address = (i*4096) >> 12;
+			ap_boot_page_table_0.entry[i].read_write = 1;
+			ap_boot_page_table_0.entry[i].user_supervisor = 0;
+		}
+		// Identity map 2Mb physical to 2Mb virtual.
+		ap_boot_page_directory.entry[0].present = 1;
+		ap_boot_page_directory.entry[0].address = (uint32_t) VIRTUAL_TO_PHYSICAL(&ap_boot_page_table_0) >> 12;
+		ap_boot_page_directory.entry[0].read_write = 1;
+		ap_boot_page_directory.entry[0].user_supervisor = 0;
+		// Map 2Mb physical to 0xC0100000 virtual.
+		ap_boot_page_directory.entry[768].present = 1;
+		ap_boot_page_directory.entry[768].address = (uint32_t) VIRTUAL_TO_PHYSICAL(&ap_boot_page_table_0) >> 12;
+		ap_boot_page_directory.entry[768].read_write = 1;
+		ap_boot_page_directory.entry[768].user_supervisor = 0;
+		// Map whatever physical frame we get for ap cpus stack to virtual addresses starting at 0xD0000000.
+		ap_boot_page_directory.entry[832].present = 1;
+		ap_boot_page_directory.entry[832].address = (uint32_t) VIRTUAL_TO_PHYSICAL(&ap_boot_page_table_1) >> 12;
+		ap_boot_page_directory.entry[832].read_write = 1;
+		ap_boot_page_directory.entry[832].user_supervisor = 0;
+		virt_addr_t ap_stack_virtual = 0xD0001000;
+		for (size_t i = 1; i < num_cpus; i++) {
+			void *ap_code = (void*) PHYSICAL_TO_VIRTUAL(0x1000);
+			phys_addr_t ap_stack = get_free_frame();
+			if (ap_stack == (phys_addr_t) -1) {
+				panic("[KERNEL]: Failed to allocated memory! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
+			}
+			// Map ap cpus stack vo virtual address starting at 0xD0000000 in the kernel directory.
+			map_page(ap_stack, ap_stack_virtual, PROT_PRESENT | PROT_READ_WRITE | PROT_KERN);
+			// Map ap cpus stack to virtual address starting at 0xD0000000 in the ap boot page directory.
+			ap_boot_page_table_1.entry[i].present = 1;
+			ap_boot_page_table_1.entry[i].address = ap_stack >> 12;
+			ap_boot_page_table_1.entry[i].read_write = 1;
+			ap_boot_page_table_1.entry[i].user_supervisor = 0;
+			*(void**) (ap_code - 4) = (uint8_t*) ap_stack_virtual + 4096;
+			*(void**) (ap_code - 8) = VIRTUAL_TO_PHYSICAL(&ap_boot_page_directory);
+			*(void**) (ap_code - 12) = (void*) ap_main;
+			lapic_send_ipi(cpu_data[i].lapic_id, LAPIC_ICR_DELIVERY_MODE_INIT | LAPIC_ICR_DESTINATION_MODE_PHYSICAL | LAPIC_ICR_LEVEL_ASSERT | LAPIC_ICR_TRIGGER_MODE_LEVEL | LAPIC_ICR_DESTINATION_NO_SHORTHAND);
+			do {
+				asm("pause");
+			} while (LAPIC_ICR_DELIVERY_STATUS(lapic_read(LAPIC_INTERRUPT_COMMAND_REGISTER_0)) != LAPIC_ICR_DELIVERY_STATUS_IDLE);
+			lapic_send_ipi(cpu_data[i].lapic_id, LAPIC_ICR_DELIVERY_MODE_INIT | LAPIC_ICR_DESTINATION_MODE_PHYSICAL | LAPIC_ICR_LEVEL_DE_ASSERT | LAPIC_ICR_TRIGGER_MODE_LEVEL | LAPIC_ICR_DESTINATION_NO_SHORTHAND);
+			do {
+				asm("pause");
+			} while (LAPIC_ICR_DELIVERY_STATUS(lapic_read(LAPIC_INTERRUPT_COMMAND_REGISTER_0)) != LAPIC_ICR_DELIVERY_STATUS_IDLE);
+			delay(10);
+			// For now just send 1 SIPI and later add logic to send again and delay more increasingly.
+			lapic_send_ipi(cpu_data[i].lapic_id, ((uint32_t) VIRTUAL_TO_PHYSICAL(ap_code) >> 12) | LAPIC_ICR_DELIVERY_MODE_STARTUP | LAPIC_ICR_DESTINATION_MODE_PHYSICAL | LAPIC_ICR_TRIGGER_MODE_LEVEL| LAPIC_ICR_DESTINATION_NO_SHORTHAND);
+			// Delaying more than the 200 micro seconds specified in the spec.
+			delay(1);
+			do {
+				asm("pause");
+			}
+			while (LAPIC_ICR_DELIVERY_STATUS(lapic_read(LAPIC_INTERRUPT_COMMAND_REGISTER_0)) != LAPIC_ICR_DELIVERY_STATUS_IDLE);
+			ap_stack_virtual += 4096;
+		}
 	}
 	kernel_main(boot_info);
 }

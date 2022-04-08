@@ -93,9 +93,11 @@ typedef struct gdt_descriptor gdt_descriptor_t;
  */
 
 #define SEGMENT_NULL SEGMENT(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-#define SEGMENT_KCODE(base, limit) (SEGMENT(base, limit, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1))
-#define SEGMENT_KDATA(base, limit) (SEGMENT(base, limit, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1))
-#define SEGMENT_CPU_DATA(base, limit) (SEGMENT(base, limit, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1))
+#define SEGMENT_KCODE(base, limit) SEGMENT(base, limit, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1)
+#define SEGMENT_KDATA(base, limit) SEGMENT(base, limit, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1)
+#define SEGMENT_CPU_DATA(base, limit) SEGMENT(base, limit, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1)
+
+void gdt_init(void);
 
 /*
  ^ Used for adding gdt entries at run time after initialization. Used for supporting per cpu variables
@@ -105,6 +107,26 @@ typedef struct gdt_descriptor gdt_descriptor_t;
 
 void set_gdt_entry(uint16_t , uint32_t, uint32_t, uint8_t, uint8_t);
 
+#endif /** __ASSEMBLER__ */
+
+/*
+ * Definition to be used in assembly code (mainly smp application processors startup code.)
+ */
+
+#ifdef __ASSEMBLER__
+
+#define SEGMENT(base, limit, accessed, readable_or_writable, conforming_or_expand_down, type, s, descriptor_privilege_level, present, available, reserved, default_operand_size_or_big, granularity) \
+        .word ((limit >> 12) & 0xFFFF), (base & 0xFFFF); \
+        .byte ((base >> 16) & 0xFF), \
+		(accessed | (readable_or_writable << 1) | (conforming_or_expand_down << 2) | (type << 3) | (s << 4) | (((descriptor_privilege_level >> 30) & 0x3) << 6) | (present << 7)), \
+		((limit >> 28) | (available << 4) | (reserved << 5) | (default_operand_size_or_big << 6) | (granularity << 7)), \
+		(base >> 24)
+
+
+#define SEGMENT_NULL SEGMENT(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+#define SEGMENT_KCODE(base, limit) SEGMENT(base, limit, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1)
+#define SEGMENT_KDATA(base, limit) SEGMENT(base, limit, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1)
+		
 #endif /** __ASSEMBLER__ */
 
 #endif /** GDT_H */

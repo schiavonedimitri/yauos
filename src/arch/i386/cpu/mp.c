@@ -11,7 +11,7 @@
 #include <lib/string.h>
 
 cpu_data_t *cpu_data;
-uint8_t num_cpus = 0;
+size_t num_cpus = 0;
 virt_addr_t local_apic_address = 0;
 bool smp = 0;
 
@@ -152,7 +152,7 @@ void mp_init() {
                 init_cpu_data((uint8_t*) (mp_config + 1), mp_config->entry_count);
                 if (num_cpus > 0) {
                     // Identity mapping local apic address to the same virtual address.
-                    map_page(mp_config->local_apic_address, mp_config->local_apic_address, PROT_PRESENT | PROT_READ_WRITE | PROT_KERN);
+                    map_page(mp_config->local_apic_address, mp_config->local_apic_address, PROT_PRESENT | PROT_READ_WRITE | PROT_KERN | PROT_CACHE_DISABLE);
                     local_apic_address = mp_config->local_apic_address;
                     smp = true;
                 } 

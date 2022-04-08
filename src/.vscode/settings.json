@@ -12,7 +12,9 @@
         "paging.h": "c",
         "pm.h": "c",
         "idt.h": "c",
-        "gdt.h": "c"
+        "gdt.h": "c",
+        "cpu.h": "c",
+        "pit.h": "c"
     },
     "git.enableCommitSigning": true
 }
