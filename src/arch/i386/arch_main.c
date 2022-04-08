@@ -334,17 +334,16 @@ void timer_callback(interrupt_context_t *context) {
  */
 void delay(uint32_t ms) {
 	uint32_t end = elapsed_milliseconds + ms;
-	while (elapsed_milliseconds < end) {
-		halt();
-	}
+	while (elapsed_milliseconds < end);
 }
 
-void ap_main() {
+void ap_main(uint32_t apic_id, uint32_t ms) {
 	ap_started = 1;
-	printk("Ap started!\n");
+	printk("Ap[%d] started!\n", apic_id);
 	while(1) {
-		halt();
-	}
+		delay(ms);
+		printk("Ap[%d]: Hello!\n", apic_id);
+	}	
 }
 
 /*
@@ -384,15 +383,17 @@ void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	}
 	// Parse the multiboot2 memory map and format it according to the way the upper kernel layer expects it.
 	parse_memory_map(m_boot2_info);	
-	pmm_init(boot_info);
 	// Pic initialization.
 	pic_init();
 	mp_init();
+	pmm_init(boot_info);
 	/* This messy shit was just for testing smp booting...now that it works it's time to organize things properly.
 	 * First i need to implement a virtual memory address space allocator for in kernel use because i cannot
 	 * randomly map physical addresses and remember them mentally.
 	 */
 	if (smp) {
+		// Identity mapping local apic address to the same virtual address.
+        map_page(local_apic_address, local_apic_address, PROT_PRESENT | PROT_READ_WRITE | PROT_KERN | PROT_CACHE_DISABLE);
 		printk("System is MP compliant!\nFound %d cpus!\n", num_cpus);
 		for (size_t i = 0; i < num_cpus; i++) {
 			printk("CPU [%s] with ID: %x\n", cpu_data[i].bsp ? "BSP" : "AP", cpu_data[i].lapic_id);
@@ -444,6 +445,8 @@ void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 			*(void**) (ap_code - 4) = (uint8_t*) ap_stack_virtual + 4096;
 			*(void**) (ap_code - 8) = VIRTUAL_TO_PHYSICAL(&ap_boot_page_directory);
 			*(void**) (ap_code - 12) = (void*) ap_main;
+			*(void**) (ap_code - 16) = (void*) i;
+			*(void**) (ap_code - 20) = (void*) (i * 200 + 100);
 			lapic_send_ipi(cpu_data[i].lapic_id, LAPIC_ICR_DELIVERY_MODE_INIT | LAPIC_ICR_DESTINATION_MODE_PHYSICAL | LAPIC_ICR_LEVEL_ASSERT | LAPIC_ICR_TRIGGER_MODE_LEVEL | LAPIC_ICR_DESTINATION_NO_SHORTHAND);
 			do {
 				asm("pause");

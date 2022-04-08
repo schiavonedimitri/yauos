@@ -69,13 +69,10 @@
 #define LAPIC_ICR_DESTINATION_ALL_INCLUDING_SELF (0x2 << 18)
 #define LAPIC_ICR_DESTINATION_ALL_EXCLUDING_SELF (0x3 << 18)
 
-
-
 void lapic_init(void);
 void lapic_write(uint32_t, uint32_t);
 uint32_t lapic_read(uint32_t);
 void lapic_send_ipi(uint8_t, uint32_t);
 void lapic_send_eoi();
-
 
 #endif /** LAPIC_H */

@@ -6,7 +6,10 @@
 #include <arch/cpu/cpu.h>
 #include <kernel/bootconsole.h>
 #include <kernel/printk.h>
+#include <kernel/spinlock.h>
 #include <lib/string.h>
+
+spinlock_t console_lock = 0;
 
 /*
  * This routine prints an unsigned integer of 32 bits by converting it into its ASCII representation.
@@ -233,6 +236,7 @@ static void print_hex_64(uint64_t value) {
  */
 
 void _printk(bool panic, const char* restrict format, ...) {
+	lock(&console_lock);
 	va_list parameters;
 	va_start(parameters, format);
 	// While format is not a NULL character
@@ -324,4 +328,5 @@ void _printk(bool panic, const char* restrict format, ...) {
 		cli();
 		halt();
 	}
+	unlock(&console_lock);
 }

@@ -26,6 +26,7 @@ typedef struct cpu_data {
 } cpu_data_t;
 
 extern cpu_data_t *cpu_data;
+extern bool smp;
 extern size_t num_cpus;
 extern virt_addr_t local_apic_address;
 

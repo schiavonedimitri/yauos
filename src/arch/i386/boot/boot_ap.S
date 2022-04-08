@@ -39,6 +39,8 @@ _ap_start32:
 	movl %eax, %cr0
     movl _ap_start16 - 4, %eax
     movl %eax, %esp
+    pushl _ap_start16 - 20
+    pushl _ap_start16 - 16
     call *(_ap_start16 - 12)
     cli
     hlt

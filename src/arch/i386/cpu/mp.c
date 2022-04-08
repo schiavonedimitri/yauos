@@ -63,6 +63,9 @@ static void init_cpu_data(uint8_t *entry, size_t num_entries) {
                 break;
         }
     }
+    if (num_cpus == 1) {
+        return;
+    }
     cpu_data = (cpu_data_t*) b_malloc(sizeof(cpu_data_t) * num_cpus);
     if (!cpu_data) {
         panic("[KERNEL]: Failed to allocate memory! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
@@ -150,9 +153,7 @@ void mp_init() {
             mp_configuration_table_header_t *mp_config = (mp_configuration_table_header_t*) PHYSICAL_TO_VIRTUAL(mp->mp_configuration_table_header_address);
             if (memcmp(mp_config->signature, MP_CONFIGURATION_TABLE_SIGNATURE, MP_CONFIGURATION_TABLE_SIGNATURE_SIZE) == 0 && checksum((void*) mp_config, mp_config->base_table_length) == 0) {
                 init_cpu_data((uint8_t*) (mp_config + 1), mp_config->entry_count);
-                if (num_cpus > 0) {
-                    // Identity mapping local apic address to the same virtual address.
-                    map_page(mp_config->local_apic_address, mp_config->local_apic_address, PROT_PRESENT | PROT_READ_WRITE | PROT_KERN | PROT_CACHE_DISABLE);
+                if (num_cpus > 1) {
                     local_apic_address = mp_config->local_apic_address;
                     smp = true;
                 } 

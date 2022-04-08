@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <arch/align.h>
 #include <arch/arch.h>
+#include <arch/cpu/cpu.h>
 #include <arch/mmu.h>
 #include <arch/types.h>
 #include <kernel/mm/pm.h>
@@ -232,6 +233,13 @@ void pmm_init(bootinfo_t *boot_info) {
 	// Reserving kernel memory.
 	if (reserve_region(k_start, k_end - k_start) == -1) {
 		panic("[KERNEL]: Could not reserve kernel physical memory! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
+	}
+	/*
+	 * If the systems supports SMP reserve a region of memory for it's bootstrap code.
+	 * Note: the smp trampoline code uses 12 bytes from the 0th page for parameters, so we reserve both (although on i386 the 0 page should be already reserved).
+	 */
+	if (smp) {
+		reserve_region(0x0, 0x2000);
 	}
 	// Reserving memory used by each bitmap.
 	for (bitmap_list_t *curr = bitmap_list;;) {
