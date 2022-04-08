@@ -337,12 +337,12 @@ void delay(uint32_t ms) {
 	while (elapsed_milliseconds < end);
 }
 
-void ap_main(uint32_t apic_id, uint32_t ms) {
+void ap_main(uint32_t apic_id, uint32_t ms, bool bsp) {
 	ap_started = 1;
-	printk("Ap[%d] started!\n", apic_id);
+	printk("%s[%d] started!\n", bsp ? "BSP" : "AP", apic_id);
 	while(1) {
 		delay(ms);
-		printk("Ap[%d]: Hello!\n", apic_id);
+		printk("%s[%d]: Hello!\n", bsp ? "BSP" : "AP", apic_id);
 	}	
 }
 
@@ -467,5 +467,6 @@ void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 			ap_stack_virtual += 4096;
 		}
 	}
+	ap_main(cpu_data->lapic_id, 348, 1);
 	kernel_main(boot_info);
 }
