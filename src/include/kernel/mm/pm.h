@@ -21,6 +21,10 @@ typedef struct bitmap_list {
     struct bitmap_list *next;
 } bitmap_list_t;
 
+/*
+ * Exported by the linker script.
+ */
+
 extern virt_addr_t _KERNEL_START_;
 extern virt_addr_t _KERNEL_END_;
 

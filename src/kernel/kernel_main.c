@@ -8,4 +8,7 @@
 void kernel_main(bootinfo_t *boot_info) {
 	printk("[KERNEL]: Arch init complete.\n");
 	k_malloc_init();
+	while(1) {
+		halt();
+	}
 }

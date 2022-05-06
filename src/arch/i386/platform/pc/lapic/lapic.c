@@ -16,7 +16,6 @@ uint32_t lapic_read(uint32_t reg) {
 
 void lapic_init() {
     lapic_write(LAPIC_SPURIOUS_INTERRUPT_VECTOR_REGISTER, 0x1 << 8);
-
 }
 
 void lapic_send_ipi(uint8_t destination_local_apic_id, uint32_t icr_low) {

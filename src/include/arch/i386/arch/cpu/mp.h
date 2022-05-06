@@ -7,6 +7,11 @@
  * Intel MP spec definitions.
  */
 
+
+/*
+ * Places to look for the mp floating pointer structure according to the mp specification.
+ */
+
 #define BDA_EBDA_BASE_ADDRESS 0x40E
 #define BDA_EBDA_BASE_ADDRESS_LEFT_SHIFT 4
 #define BDA_BASE_MEMORY_SIZE_ADDRESS 0x413

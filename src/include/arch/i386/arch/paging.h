@@ -3,7 +3,9 @@
 
 #include <stdint.h>
 
-// For now this kernel supports only normal 4kb directory entries and no page size extensions.
+/*
+ * This kernel only supports standard paging without page size extensions.
+ */
 
 struct page_directory_entry {
     uint8_t present: 1;

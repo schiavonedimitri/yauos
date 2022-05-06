@@ -10,6 +10,10 @@
 #define GDT_CPU_DATA_OFFSET 0x18
 #define GDT_USER_CODE_OFFSET 0x20
 #define GDT_USER_DATA_OFFSET 0x28
+/*
+ * NULL segment, kernel code and data segments, user code and data segments and per cpu segment.
+ */
+#define GDT_MAX_ENTRIES 6
 
 /* 
  * GDT definitions:

@@ -104,7 +104,7 @@ $(OBJ_DIR)/%.o : %.c
 $(BIN_DIR)/boot_ap : $(ARCH_DIR)/boot/boot_ap.S
 	$(CC) $(CFLAGS) -c $< -o $(OBJ_DIR)/boot_ap.o
 	$(LD) -nostdlib -N -e _ap_start16 -Ttext 0x1000 -o $(OBJ_DIR)/boot_ap_tmp.o $(OBJ_DIR)/boot_ap.o
-	$(OBJCOPY) -S -O binary -j .text $(OBJ_DIR)/boot_ap_tmp.o $(BIN_DIR)/boot_ap
+	$(OBJCOPY) -S -O binary $(OBJ_DIR)/boot_ap_tmp.o $(BIN_DIR)/boot_ap
 
 $(OBJ_DIR)/%.o : %.S
 	@mkdir -p $(OBJ_DIR)

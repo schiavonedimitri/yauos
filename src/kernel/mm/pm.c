@@ -218,8 +218,7 @@ void pmm_init(bootinfo_t *boot_info) {
 		}
 		curr = curr->next;
 	}
-	// If the architecture is i386 resreve known low memory regions.
-	#if ARCH == i386
+	// Reserve known low memory regions.
 	if (reserve_region(0x0, 0x3FF) == -1) {
 		panic("[KERNEL]: Could not reserve IVT memory region! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 	}
@@ -229,17 +228,17 @@ void pmm_init(bootinfo_t *boot_info) {
 	if (reserve_region(0x80000, 0x9FFFF - 0x80000) == -1) {
 		panic("[KERNEL]: Could not reserve EBDA memory region! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 	}
-	#endif
 	// Reserving kernel memory.
 	if (reserve_region(k_start, k_end - k_start) == -1) {
 		panic("[KERNEL]: Could not reserve kernel physical memory! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 	}
 	/*
-	 * If the systems supports SMP reserve a region of memory for it's bootstrap code.
-	 * Note: the smp trampoline code uses 12 bytes from the 0th page for parameters, so we reserve both (although on i386 the 0 page should be already reserved).
+	 * If the systems supports SMP reserve a region of memory for its bootstrap code.
+	 * Note: the smp trampoline code uses 12 bytes from the 0th page for parameters but the 0th page should be already reserved as it contains 
+	 * real mode IVT and BDA.
 	 */
 	if (smp) {
-		reserve_region(0x0, 0x2000);
+		reserve_region(0x1000, 0x2000);
 	}
 	// Reserving memory used by each bitmap.
 	for (bitmap_list_t *curr = bitmap_list;;) {

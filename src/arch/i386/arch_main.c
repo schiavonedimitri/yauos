@@ -337,13 +337,12 @@ void delay(uint32_t ms) {
 	while (elapsed_milliseconds < end);
 }
 
-void ap_main(uint32_t apic_id, uint32_t ms, bool bsp) {
+void ap_main() {
 	ap_started = 1;
-	printk("%s[%d] started!\n", bsp ? "BSP" : "AP", apic_id);
+	printk("AP started!\n");
 	while(1) {
-		delay(ms);
-		printk("%s[%d]: Hello!\n", bsp ? "BSP" : "AP", apic_id);
-	}	
+		halt();
+	}
 }
 
 /*
@@ -442,11 +441,9 @@ void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 			ap_boot_page_table_1.entry[i].address = ap_stack >> 12;
 			ap_boot_page_table_1.entry[i].read_write = 1;
 			ap_boot_page_table_1.entry[i].user_supervisor = 0;
-			*(void**) (ap_code - 4) = (uint8_t*) ap_stack_virtual + 4096;
-			*(void**) (ap_code - 8) = VIRTUAL_TO_PHYSICAL(&ap_boot_page_directory);
+			*(void**) (ap_code - 4) = VIRTUAL_TO_PHYSICAL(&ap_boot_page_directory);
+			*(void**) (ap_code - 8) = (uint8_t*) ap_stack_virtual + 4096;
 			*(void**) (ap_code - 12) = (void*) ap_main;
-			*(void**) (ap_code - 16) = (void*) i;
-			*(void**) (ap_code - 20) = (void*) (i * 200 + 100);
 			lapic_send_ipi(cpu_data[i].lapic_id, LAPIC_ICR_DELIVERY_MODE_INIT | LAPIC_ICR_DESTINATION_MODE_PHYSICAL | LAPIC_ICR_LEVEL_ASSERT | LAPIC_ICR_TRIGGER_MODE_LEVEL | LAPIC_ICR_DESTINATION_NO_SHORTHAND);
 			do {
 				asm("pause");
@@ -467,6 +464,5 @@ void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 			ap_stack_virtual += 4096;
 		}
 	}
-	ap_main(cpu_data->lapic_id, 348, 1);
 	kernel_main(boot_info);
 }

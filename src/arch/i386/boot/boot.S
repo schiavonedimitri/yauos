@@ -1,4 +1,6 @@
+#include <arch/cpu/gdt.h>
 #include <arch/mmu.h>
+
 # Please note that this project uses the AT&T assembly syntax.
 
 # defining a separate section for the multiboot2 header because it needs to be linked first in order for a multiboot2 compliant bootloader to boot us. See the linker script.
@@ -77,12 +79,25 @@
 	.global _start
 	.type _start, @function
 	_start:
-		# Zero the general purpose registers but eax and ebx because they contain data left by the bootloader that we need to pass to the upper layers.
+		# Setup initial bootstrap GDT as we cannot rely on the one provided by GRUB.
+		lgdtl VIRTUAL_TO_PHYSICAL(gdtdescriptor)
+		# Do a far jump to reaload the code segment selector with the new GDT code segment selector.
+		ljmpl $GDT_KERNEL_CODE_OFFSET, $VIRTUAL_TO_PHYSICAL(1f)
+	1:
+		# Reload the remaining segment selectors with the new GDT data segment selector.
+		xorl %ecx, %ecx
+    	movw $GDT_KERNEL_DATA_OFFSET, %cx
+    	movw %cx, %ds
+    	movw %cx, %es
+    	movw %cx, %fs
+    	movw %cx, %gs
+    	movw %cx, %ss	
+		# Zero the general purpose registers but eax and ebx because they contain data left by the bootloader that we need to pass to the Kernel entry point.
 		xorl %edx, %edx
 		movl %edx, %ecx
 		movl %edx, %esi
 		movl %edx, %edi
-		# Setup stack pointer for use in this code.
+		# Setup physical stack pointer for use in this code.
 		movl $VIRTUAL_TO_PHYSICAL(stack_top), %esp
 		# Setup the first page table of the kernel to map the first 2Mb physical memory starting at physical location 0x00000000.
 		# VIRTUAL_TO_PHYSICAL is needed because the kernel is linked at 0xC0100000 but is actually loaded at 0x100000, see the linker script.
@@ -158,8 +173,8 @@
 		orl $0x80010001, %ecx
 		movl %ecx, %cr0
 		leal 1f, %ecx
-		# Go to virtual addresses by using an indirect jump because no gdt has been setup yet.
-		jmpl *%ecx
+		# Go to virtual addresses by using an indirect jump.
+		jmp %ecx
 	1:
 		# Remove identity map because it isn't needed anymore.
 		movl $0, kernel_directory
@@ -182,3 +197,22 @@
 	1:
 		hlt
 		jmp 1b
+
+.section .rodata
+# Bootstrap GDT for the processor.
+.align 8
+gdt:
+    # Null segment as per Intel manual.
+    SEGMENT_NULL
+    # Flat kernel code segment.
+    SEGMENT_KCODE(0, 0xFFFFFFFF)
+    # Flat kernel data segment.
+    SEGMENT_KDATA(0, 0xFFFFFFFF)
+
+# GDT descriptor. VIRTUAL_TO_PHYSICAL is needed because the kernel is linked at its virtual base
+# but loaded at 0x100000. Before paging is enabled manual address fixing is needed.
+gdtdescriptor:
+    # Sizeof(gdtdescriptor) - 1
+    .word VIRTUAL_TO_PHYSICAL(gdtdescriptor - gdt - 1)
+    # Gdt pointer.
+    .long VIRTUAL_TO_PHYSICAL(gdt)

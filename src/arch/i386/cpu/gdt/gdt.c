@@ -7,12 +7,12 @@ extern void load_gdt(gdt_descriptor_t*);
 static gdt_descriptor_t gdt_descriptor;
 
 /*
- * Defining a static 8192 array of gdt entries as such is the maximum supported on i386.
+ * Defining a static array of gdt entries.
  * Some slots will be added later to support per-cpu variables through the use of es, fs, gs 
  * segments.
  */
 
-static gdt_entry_t gdt[8192];
+static gdt_entry_t gdt[GDT_MAX_ENTRIES];
 
 /*
  * This function is used to set new gdt entries after initialization. 
@@ -41,7 +41,7 @@ void set_gdt_entry(uint16_t number, uint32_t base, uint32_t limit, uint8_t acces
 }
 
 void gdt_init() {
-	memset(&gdt, 0x0, sizeof(gdt_entry_t) * 8192);
+	memset(&gdt, 0x0, sizeof(gdt_entry_t) * GDT_MAX_ENTRIES);
 	// Add default entries
 	gdt[0] = SEGMENT_NULL;
 	gdt[1] = SEGMENT_KCODE(0, 0xFFFFFFFF);

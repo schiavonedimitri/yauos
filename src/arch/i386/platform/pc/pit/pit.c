@@ -1,7 +1,6 @@
 #include <stdint.h>
 #include <arch/cpu/io.h>
 #include <platform/pit.h>
-#include <kernel/printk.h>
 
 void pit_interrupt_on_terminal_count(uint16_t count) {
     outb(PIT_COMMAND_MODE_REGISTER, PIT_COMMAND_CHANNEL_0 | PIT_COMMAND_ACCESS_LOW_BYTE_HIGH_BYTE | PIT_COMMAND_MODE_INTERRUPT_ON_TERMINAL_COUNT | PIT_COMMAND_BINARY_MODE);
