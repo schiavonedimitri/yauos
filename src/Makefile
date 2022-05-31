@@ -1,4 +1,4 @@
-ARCH?=i686
+ARCH?=i386
 PLATFORM?=pc
 
 COMPILER_DIR:=$(realpath ..)/toolchain/bin
@@ -41,7 +41,7 @@ else
 	OPTIMIZATION=-O3
 endif
 
-ifeq ($(ARCH), i386)
+ifeq ($(ARCH), i686)
 	ARCH_BITS:=32
 endif
 

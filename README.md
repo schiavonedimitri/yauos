@@ -6,7 +6,7 @@ As soon as the project takes shape more info will be added and the wiki updated.
 Update: Since this is an educational homemade hobby operating system i'm making in my free time to learn more about Os development, i have decided to lower the project ambitions to simplify coding and getting something functional in less time.
 The new goals for YauOs are:
 - Being a Unix like clone with Posix compatibily.
-- Support for the i686 32 bit architecture only.
+- Support for the i386 32 bit architecture only.
 - Support for booting only on legacy bios systems (no UEFI support).
 - Support only for PC-AT platform.
 - Support SMP only with the old MP specification.
