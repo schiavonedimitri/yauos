@@ -8,7 +8,7 @@
 	header_start:
 		# Multiboot2 magic
 		.long 0xE85250D6
-		# Multiboot2 architecture, 0 for x86 32 bit 
+		# Multiboot2 architecture, 0 for i386 
 		.long 0
 		# Multiboot2 header length
 		.long (header_end - header_start)
