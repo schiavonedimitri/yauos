@@ -62,6 +62,9 @@ _ap_start32:
     movl %eax, %esp
     # Setup initial stack frame.
     movl %esp, %ebp
+    # Push local apic identifier of this cpu.
+    movl _ap_start16 - 16, %eax
+    pushl %eax
     # Call CPU main entry point from the passed parameters.
     call *(_ap_start16 - 12)
    	# If for whatever reason the CPU returns, disable interrupts and halt the machine and spin forever (that is so because as per intel manual
@@ -88,6 +91,6 @@ gdt:
 # GDT descriptor.
 gdtdescriptor:
     # Sizeof(gdtdescriptor) - 1
-    .word (gdtdescriptor - gdt - 1)
+    .word gdtdescriptor - gdt - 1
     # Gdt pointer.
     .long gdt

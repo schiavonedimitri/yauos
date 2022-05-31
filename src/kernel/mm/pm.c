@@ -10,6 +10,7 @@
 #include <kernel/bootinfo.h>
 #include <kernel/bootmem.h>
 #include <kernel/printk.h>
+#include <kernel/spinlock.h>
 #include <lib/bitmap.h>
 #include <lib/string.h>
 
@@ -20,6 +21,8 @@ static bitmap_list_t *bitmap_list = NULL;
 static size_t total_blocks = 0;
 static size_t total_reserved_blocks = 0;
 static size_t total_used_blocks = 0;
+spinlock_t pmm_lock = 0;
+
 
 /*
  * Simple routine that prints the memory map to the kernel bootconsole.
@@ -265,7 +268,9 @@ void pmm_init(bootinfo_t *boot_info) {
 
 phys_addr_t get_free_frame() {
 	// This is used to remember the last bitmap with free blocks. Initially it is the first bitmap.
+	lock(&pmm_lock);
 	static bitmap_list_t *last_with_free_blocks = NULL;
+	unlock(&pmm_lock);
 	// Check to see if there is any free block in the system.
 	if ((ssize_t) total_blocks - total_used_blocks <= 0){
 		return -1;
@@ -280,6 +285,7 @@ phys_addr_t get_free_frame() {
 	for (;;) {
 		// Check if this bitmap has any free blocks.
 		if ((ssize_t) curr->total_blocks - curr->used_blocks > 0) {
+			lock(&pmm_lock);
 			int index = bitmap_first_unset(curr->bitmap, curr->total_blocks);
 			if (index != -1) {
         		bitmap_set(curr->bitmap, index);
@@ -289,8 +295,10 @@ phys_addr_t get_free_frame() {
 				if (curr->used_blocks == curr->total_blocks) {
 					last_with_free_blocks = curr->next;
 				}
+				unlock(&pmm_lock);
 				return (phys_addr_t) (BLOCK_SIZE * index) + curr->first_addr;
 			}
+			unlock(&pmm_lock);
 		}
 		if (curr->next == NULL || curr->next == bitmap_list) {
 			break;
@@ -309,7 +317,9 @@ void free_frame(phys_addr_t addr) {
 	if (!bitmap_test(bitmap->bitmap, index)) {
 		panic("[PM]: Trying to free a block already free! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 	}
+	lock(&pmm_lock);
 	bitmap_unset(bitmap->bitmap, index);
 	bitmap->used_blocks--;
 	total_used_blocks--;
+	unlock(&pmm_lock);
 }

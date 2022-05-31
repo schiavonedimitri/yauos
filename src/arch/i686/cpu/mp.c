@@ -38,7 +38,7 @@ static mp_floating_pointer_structure_t* mp_floating_pointer_structure_search(voi
 }
 
 static void check_hyperthreading(void) {
-    unsigned int eax, unused, edx;
+    unsigned int eax, unused, edx = 0;
     __get_cpuid(1, &eax, &unused, &unused, &edx);
     ht = edx & (1 << 28);
 }

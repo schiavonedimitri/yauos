@@ -15,7 +15,9 @@
         "gdt.h": "c",
         "cpu.h": "c",
         "pit.h": "c",
-        "lapic.h": "c"
+        "lapic.h": "c",
+        "bootconsole.h": "c",
+        "string.h": "c"
     },
     "git.enableCommitSigning": true
 }

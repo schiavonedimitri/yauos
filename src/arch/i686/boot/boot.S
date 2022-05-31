@@ -8,7 +8,7 @@
 	header_start:
 		# Multiboot2 magic
 		.long 0xE85250D6
-		# Multiboot2 architecture, 0 for i386
+		# Multiboot2 architecture, 0 for x86 32 bit 
 		.long 0
 		# Multiboot2 header length
 		.long (header_end - header_start)
@@ -174,7 +174,7 @@
 		movl %ecx, %cr0
 		leal 1f, %ecx
 		# Go to virtual addresses by using an indirect jump.
-		jmp %ecx
+		jmp *%ecx
 	1:
 		# Remove identity map because it isn't needed anymore.
 		movl $0, kernel_directory
@@ -213,6 +213,6 @@ gdt:
 # but loaded at 0x100000. Before paging is enabled manual address fixing is needed.
 gdtdescriptor:
     # Sizeof(gdtdescriptor) - 1
-    .word VIRTUAL_TO_PHYSICAL(gdtdescriptor - gdt - 1)
+    .word gdtdescriptor - gdt - 1
     # Gdt pointer.
     .long VIRTUAL_TO_PHYSICAL(gdt)

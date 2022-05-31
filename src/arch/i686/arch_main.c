@@ -317,14 +317,17 @@ __attribute__((__aligned__(PAGE_SIZE)))page_table_t ap_boot_page_table_1;
  * This is used to count milliseconds elapsed since the counter began counting.
  */
 static volatile uint32_t elapsed_milliseconds = 0;
+static volatile uint32_t elapsed_seconds = 0;
 
 
 /*
  * This is used for the delays required for the smp ap startup code.
  */
 
-void timer_callback(interrupt_context_t *context) {
-	elapsed_milliseconds++;
+void timer_callback() {
+	if ((++elapsed_milliseconds) % 1000 == 0) {
+		elapsed_seconds++;
+	}
 	// For now the count value was obtained manually to get an IRQ every ~1ms.
 	pit_interrupt_on_terminal_count(1200);
 }
@@ -334,15 +337,40 @@ void timer_callback(interrupt_context_t *context) {
  */
 void delay(uint32_t ms) {
 	uint32_t end = elapsed_milliseconds + ms;
-	while (elapsed_milliseconds < end);
-}
-
-void ap_main() {
-	ap_started = 1;
-	printk("AP started!\n");
-	while(1) {
+	while (elapsed_milliseconds < end) {
 		halt();
 	}
+}
+
+void delay_s(uint32_t s) {
+	uint32_t end = elapsed_seconds + s;
+	while (elapsed_seconds < end);
+}
+
+static size_t next = 1;
+
+int rand(void) {
+	next = next * 1103515245 + 12345;
+    return (next / 65536) % 32768;
+}
+
+void ap_main(uint8_t lapic_id) {
+	ap_started = 1;
+	printk("[%x]: AP started!\n", lapic_id);
+	delay_s(2);
+	printk("[%x]: AP starting main loop...!\n", lapic_id);
+	while(1) {
+		delay_s(lapic_id);
+		phys_addr_t frame = get_free_frame();
+		if (frame != (phys_addr_t) (phys_addr_t) -1) {
+			printk("CPU[%x]: got free frame at: %x\n", lapic_id, frame);
+		}
+		else {
+			printk("CPU[%x]: out of memory!\n");
+			break;
+		}
+	}
+	halt();
 }
 
 /*
@@ -441,9 +469,10 @@ void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 			ap_boot_page_table_1.entry[i].address = ap_stack >> 12;
 			ap_boot_page_table_1.entry[i].read_write = 1;
 			ap_boot_page_table_1.entry[i].user_supervisor = 0;
-			*(void**) (ap_code - 4) = VIRTUAL_TO_PHYSICAL(&ap_boot_page_directory);
-			*(void**) (ap_code - 8) = (uint8_t*) ap_stack_virtual + 4096;
+			*(void**) (ap_code - 4) = (void*) VIRTUAL_TO_PHYSICAL(&ap_boot_page_directory);
+			*(void**) (ap_code - 8) = (void*) ((size_t) ap_stack_virtual + 4096);
 			*(void**) (ap_code - 12) = (void*) ap_main;
+			*(void**) (ap_code - 16) = (void*) (uint32_t) cpu_data[i].lapic_id;
 			lapic_send_ipi(cpu_data[i].lapic_id, LAPIC_ICR_DELIVERY_MODE_INIT | LAPIC_ICR_DESTINATION_MODE_PHYSICAL | LAPIC_ICR_LEVEL_ASSERT | LAPIC_ICR_TRIGGER_MODE_LEVEL | LAPIC_ICR_DESTINATION_NO_SHORTHAND);
 			do {
 				asm("pause");
@@ -462,6 +491,17 @@ void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 			}
 			while (LAPIC_ICR_DELIVERY_STATUS(lapic_read(LAPIC_INTERRUPT_COMMAND_REGISTER_0)) != LAPIC_ICR_DELIVERY_STATUS_IDLE);
 			ap_stack_virtual += 4096;
+		}
+	}
+	while(1) {
+		delay_s(3);
+		phys_addr_t frame = get_free_frame();
+		if (frame != (phys_addr_t) -1) {
+			printk("CPU[BSP]: got free frame at: %x\n", frame);
+		}
+		else {
+			printk("CPU[BSP]: out of memory!\n");
+			break;
 		}
 	}
 	kernel_main(boot_info);

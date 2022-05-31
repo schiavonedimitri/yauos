@@ -1,6 +1,5 @@
 #include <stddef.h>
 #include <lib/string.h>
-#include <kernel/printk.h>
 
 int memcmp(const void *aptr, const void *bptr, size_t size) {
 	const unsigned char* a = (const unsigned char*) aptr;
@@ -62,4 +61,14 @@ int strcmp(const char *s1, const char *s2) {
 		a++, b++;
 	}
 	return *a - *b;
+}
+
+char* strcpy(char* restrict dstptr, const char* restrict srcptr) {
+	unsigned char* dst = (unsigned char*) dstptr;
+	const unsigned char* src = (const unsigned char*) srcptr;
+	size_t i = 0;
+	while ((dst[i] = src[i]) != '\0') {
+		i++;
+	}
+	return dstptr;
 }

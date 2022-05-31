@@ -1,10 +1,9 @@
-#include <stdalign.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <arch/align.h>
-#include <kernel/assert.h>
 #include <arch/kernel/mm/vm.h>
 #include <arch/types.h>
+#include <kernel/assert.h>
 #include <kernel/mm/pm.h>
 #include <kernel/printk.h>
 #include <kernel/mm/kmalloc.h>
@@ -72,11 +71,11 @@ ssize_t k_malloc_init() {
  */
 
 static void* k_sbrk(size_t amount) {
-	if (ALIGN((size_t) heap_brk + amount, alignof(max_align_t)) > (size_t) heap_end) {
+	if ((size_t) heap_brk + amount > (size_t) heap_end) {
 		return (void*) -1;
 	}
 	void *prev_brk = (void*) heap_brk;
-	heap_brk = ALIGN((virt_addr_t) (size_t) heap_brk + amount, alignof(max_align_t));
+	heap_brk = (virt_addr_t) ((size_t) heap_brk + amount);
 	return prev_brk;
 }
 
@@ -139,32 +138,26 @@ static Header* k_morecore(size_t n_units) {
 void* k_malloc(size_t n_bytes) {
 	Header *p, *prevp;
 	size_t n_units;
-	// Take into account how much bytes we need in case the memory is not aligned.
-	size_t align_units = 0;
 	n_units = (n_bytes + sizeof(Header) - 1) / sizeof(Header) + 1;
 	if ((prevp = freep) == 0) {
 		base.s.ptr = freep = prevp = &base;
 		base.s.size = 0;
 	}
 	for (p = prevp->s.ptr; ; prevp = p, p = p->s.ptr) {
-		// Add how many units more are needed to allocate n_bytes and align to max_align_t.
-		if (!IS_ALIGNED((p + 1), alignof(max_align_t))) {
-			align_units = alignof(max_align_t) / sizeof(Header);
-		}
-		if (p->s.size >= n_units + align_units) {
-			if (p->s.size == n_units + align_units) {
+		if (p->s.size >= n_units) {
+			if (p->s.size == n_units) {
 				prevp->s.ptr = p->s.ptr;
 			}
 			else {
-				p->s.size -= n_units + align_units;
+				p->s.size -= n_units;
 				p += p->s.size;
-				p->s.size = n_units + align_units;
+				p->s.size = n_units;
 			}
 			freep = prevp;
-			return (void*) ALIGN((p + 1), alignof(max_align_t));
+			return (void*) (p + 1);
 		}
 		if (p == freep) {
-			if((p = k_morecore(n_units + align_units)) == NULL) {
+			if((p = k_morecore(n_units)) == NULL) {
 				return NULL;
 			}
 		}

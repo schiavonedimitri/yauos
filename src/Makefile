@@ -1,4 +1,4 @@
-ARCH?=i386
+ARCH?=i686
 PLATFORM?=pc
 
 COMPILER_DIR:=$(realpath ..)/toolchain/bin

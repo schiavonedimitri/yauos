@@ -1,7 +1,7 @@
-ARCH?=i386
+ARCH?=i686
 
-BINUTILS_VERSION?=2.37
-GCC_VERSION?=11.2.0
+BINUTILS_VERSION?=2.38
+GCC_VERSION?=12.1.0
 
 TARGET=$(ARCH)-elf
 
@@ -14,7 +14,7 @@ GCC_BUILD_DIR:=$(GCC_DIR)/build-gcc
 
 .PHONY: toolchain binutils gcc binutils-download gcc-download clean-all clean-build clean-downloads
 
-.DEFAULT_GOAL:=toolchain
+.DEFAULT_GOAL:= toolchain
 
 toolchain: binutils gcc
 
@@ -24,7 +24,7 @@ binutils: binutils-download
 	@cd $(BINUTILS_BUILD_DIR) && make install
 
 gcc: gcc-download
-	@cd $(GCC_DIR) && mkdir -p build-gcc && cd $(GCC_BUILD_DIR) && ../configure --target=$(TARGET) --prefix=$(TOOLCHAIN_DIR) --disable-nls --enable-languages=c --without-headers
+	@cd $(GCC_DIR) && mkdir -p build-gcc && cd $(GCC_BUILD_DIR) && ../configure --target=$(TARGET) --prefix=$(TOOLCHAIN_DIR) --disable-nls --enable-languages=c,c++ --without-headers
 	@cd $(GCC_BUILD_DIR) && PATH=$(TOOLCHAIN_DIR)/bin:$(PATH) make all-gcc
 	@cd $(GCC_BUILD_DIR) && PATH=$(TOOLCHAIN_DIR)/bin:$(PATH) make all-target-libgcc
 	@cd $(GCC_BUILD_DIR) && PATH=$(TOOLCHAIN_DIR)/bin:$(PATH) make install-gcc
