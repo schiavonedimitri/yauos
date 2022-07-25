@@ -21,34 +21,53 @@ static uint8_t last_ocw3_slave = 0;
 // Note: io_wait() calls are put just for ancient hardware which might not be fast enough to complete io writes.
 
 void pic_init() {
+    
     // Save old interrupt masks to be able to return to real mode configuration.
+    
     master_real_mode_interrupt_mask = inb(PIC1_DATA_PORT);
     slave_real_mode_interrupt_mask = inb(PIC2_DATA_PORT);
+    
     // Send ICW1 to master pic.
+    
     outb(PIC1_COMMAND_PORT, ICW1_INIT | ICW1_ICW4_NEEDED | ICW1_CASCADE | ICW1_EDGE_TRIGGERED);
     io_wait();
+    
     // Send ICW1 to slave pic.
     outb(PIC2_COMMAND_PORT, ICW1_INIT | ICW1_ICW4_NEEDED | ICW1_CASCADE | ICW1_EDGE_TRIGGERED);
     io_wait();
+    
     // Remap master pic irqs to interrupt numbers 32 - 39.
+    
     outb(PIC1_DATA_PORT, ICW2(0x20));
     io_wait();
+    
     // Remap slave pic irqs to interrupt numbers 40 - 47.
+    
     outb(PIC2_DATA_PORT, ICW2(0x28));
     io_wait();
+    
     // Tell master there's a salve at IRQ2 line.
+    
     outb(PIC1_DATA_PORT, ICW3_MASTER_SLAVE_AT_IRQ2);
     io_wait();
+    
     // Tell slave there's a master at IRQ2 line.
+    
     outb(PIC2_DATA_PORT, ICW3_SLAVE_MASTER_AT_IRQ2);
     io_wait();
+    
     // Set master pic in 80x86 mode with no auto eoi and sequential mode.
+    
     outb(PIC1_DATA_PORT, ICW4_80_86_MODE | ICW4_NO_AUTO_EOI | ICW4_SEQUENTIAL_MODE);
     io_wait();
+    
     // Set slave pic in 80x86 mode with no auto eoi and sequential mode.
+    
     outb(PIC2_DATA_PORT, ICW4_80_86_MODE | ICW4_NO_AUTO_EOI | ICW4_SEQUENTIAL_MODE);
     io_wait();
+    
     // Disable all irq lines initially.
+    
     outb(PIC1_DATA_PORT, OCW1_DISABLE_ALL_IRQS);
     io_wait();
     outb(PIC2_DATA_PORT, OCW1_DISABLE_ALL_IRQS);
@@ -56,34 +75,54 @@ void pic_init() {
 }
 
 void pic_restore_real_mode_configuration() {
+    
     // Send ICW1 to master pic.
+    
     outb(PIC1_COMMAND_PORT, ICW1_INIT | ICW1_ICW4_NEEDED | ICW1_CASCADE | ICW1_EDGE_TRIGGERED);
     io_wait();
+    
     // Send ICW1 to slave pic.
+    
     outb(PIC2_COMMAND_PORT, ICW1_INIT | ICW1_ICW4_NEEDED | ICW1_CASCADE | ICW1_EDGE_TRIGGERED);
     io_wait();
+    
     // Restore master pic irqs.
+    
     outb(PIC1_DATA_PORT, ICW2(0x08));
     io_wait();
+    
     // Restore slave pic irqs.
+    
     outb(PIC2_DATA_PORT, ICW2(0x70));
     io_wait();
+    
     // Tell master there's a salve at IRQ2 line.
+    
     outb(PIC1_DATA_PORT, ICW3_MASTER_SLAVE_AT_IRQ2);
     io_wait();
+    
     // Tell slave there's a master at IRQ2 line.
+    
     outb(PIC2_DATA_PORT, ICW3_SLAVE_MASTER_AT_IRQ2);
     io_wait();
+    
     // Set master pic in 80x86 mode with no auto eoi and sequential mode.
+    
     outb(PIC1_DATA_PORT, ICW4_80_86_MODE | ICW4_NO_AUTO_EOI | ICW4_SEQUENTIAL_MODE);
     io_wait();
+    
     // Set slave pic in 80x86 mode with no auto eoi and sequential mode.
+    
     outb(PIC2_DATA_PORT, ICW4_80_86_MODE | ICW4_NO_AUTO_EOI | ICW4_SEQUENTIAL_MODE);
     io_wait();
+    
     // Restore master interrupt mask.
+    
     outb(PIC1_DATA_PORT, master_real_mode_interrupt_mask);
     io_wait();
+    
     // Retore slave interrupt mask.
+    
     outb(PIC2_DATA_PORT, slave_real_mode_interrupt_mask);
     io_wait();
 }

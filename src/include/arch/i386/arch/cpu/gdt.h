@@ -10,36 +10,38 @@
 #define GDT_CPU_DATA_OFFSET 0x18
 #define GDT_USER_CODE_OFFSET 0x20
 #define GDT_USER_DATA_OFFSET 0x28
+
 /*
  * NULL segment, kernel code and data segments, user code and data segments and per cpu segment.
  */
+
 #define GDT_MAX_ENTRIES 6
 
 /* 
  * GDT definitions:
  */
 
-#define GDT_CODE_SEGMENT_NOT_READABLE 0x0
+#define GDT_CODE_SEGMENT_NOT_READABLE 0
 #define GDT_CODE_SEGMENT_READABLE (1 << 1)
-#define GDT_DATA_SEGMENT_NOT_WRITEABLE 0x0
+#define GDT_DATA_SEGMENT_NOT_WRITEABLE 0
 #define GDT_DATA_SEGMENT_WRITEABLE (1 << 1)
-#define GDT_DATA_SEGMENT_GROW_UP 0x0
+#define GDT_DATA_SEGMENT_GROW_UP 0
 #define GDT_DATA_SEGMENT_GROW_DOWN (1 << 2)
-#define GDT_CODE_SEGMENT_CONFORMING 0x0
+#define GDT_CODE_SEGMENT_CONFORMING 0
 #define GDT_CODE_SEGMENT_NOT_CONFORMING (1 << 2)
-#define GDT_DATA_SEGMENT 0x0
+#define GDT_DATA_SEGMENT 0
 #define GDT_CODE_SEGMENT (1 << 3)
-#define GDT_SYSTEM_SEGMENT 0x0
+#define GDT_SYSTEM_SEGMENT 0
 #define GDT_NON_SYSTEM_SEGMENT ( 1 << 4)
-#define GDT_SEGMENT_DPL_0 0x0
+#define GDT_SEGMENT_DPL_0 0
 #define GDT_SEGMENT_DPL_1 (1 << 5)
 #define GDT_SEGMENT_DPL_2 (2 << 4)
 #define GDT_SEGMENT_DPL_3 (3 << 4)
-#define GDT_SEGMENT_NOT_PRESENT 0x0
+#define GDT_SEGMENT_NOT_PRESENT 0
 #define GDT_SEGMENT_PRESENT (1 << 7)
-#define GDT_FLAGS_GRANULARITY_BYTE 0x0
+#define GDT_FLAGS_GRANULARITY_BYTE 0
 #define GDT_FLAGS_GRANULARITY_PAGE (1 << 3)
-#define GDT_FLAGS_16_BIT_SEGMENT 0x0
+#define GDT_FLAGS_16_BIT_SEGMENT 0
 #define GDT_FLAGS_32_BIT_SEGMENT (1 << 2)
 
 #ifndef __ASSEMBLER__
@@ -74,9 +76,9 @@ typedef struct gdt_descriptor gdt_descriptor_t;
 
 #define SEGMENT(base, limit, accessed, readable_or_writable, conforming_or_expand_down, type, s, descriptor_privilege_level, present, available, reserved, default_operand_size_or_big, granularity) \
 	(gdt_entry_t) { \
-					(uint16_t) ((limit >> 12) & 0xFFFF), \
-					(uint16_t) (base & 0xFFFF), \
-					(uint8_t) ((base >> 16) & 0xFF), \
+					(uint16_t) (((uint32_t) limit >> 12) & 0xFFFF), \
+					(uint16_t) ((uint32_t) base & 0xFFFF), \
+					(uint8_t) (((uint32_t) base >> 16) & 0xFF), \
 					(uint8_t) (accessed), \
 					(uint8_t) (readable_or_writable), \
 					(uint8_t) (conforming_or_expand_down), \
@@ -84,12 +86,12 @@ typedef struct gdt_descriptor gdt_descriptor_t;
 					(uint8_t) (s), \
 					(uint8_t) ((descriptor_privilege_level >> 30) & 0x3), \
 					(uint8_t) (present), \
-					(uint8_t) (limit >> 28), \
+					(uint8_t) ((uint32_t) limit >> 28), \
 					(uint8_t) (available), \
 					(uint8_t) (reserved), \
 					(uint8_t) (default_operand_size_or_big), \
 					(uint8_t) (granularity), \
-					(uint8_t) (base >> 24) \
+					(uint8_t) ((uint32_t) base >> 24) \
 	}
 
 /*
@@ -101,7 +103,7 @@ typedef struct gdt_descriptor gdt_descriptor_t;
 #define SEGMENT_KDATA(base, limit) SEGMENT(base, limit, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1)
 #define SEGMENT_CPU_DATA(base, limit) SEGMENT(base, limit, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1)
 
-void gdt_init(void);
+void gdt_init(uint8_t);
 
 /*
  ^ Used for adding gdt entries at run time after initialization. Used for supporting per cpu variables
@@ -109,7 +111,7 @@ void gdt_init(void);
  * Warning: modifying segments in use after initialization at run time might trigger a kernel crash.
  */
 
-void set_gdt_entry(uint16_t , uint32_t, uint32_t, uint8_t, uint8_t);
+void set_gdt_entry(gdt_entry_t*, uint16_t , uint32_t, uint32_t, uint8_t, uint8_t);
 
 #endif /** __ASSEMBLER__ */
 

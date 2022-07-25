@@ -17,7 +17,13 @@
         "pit.h": "c",
         "lapic.h": "c",
         "bootconsole.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "bootconsole_serial.h": "c",
+        "interrupt.h": "c",
+        "smp.h": "c",
+        "spinlock.h": "c",
+        "types.h": "c",
+        "assert.h": "c"
     },
     "git.enableCommitSigning": true
 }

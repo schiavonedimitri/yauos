@@ -8,8 +8,6 @@ void pit_interrupt_on_terminal_count(uint16_t count) {
     outb(PIT_CHANNEL_0_DATA_REGISTER, (uint8_t) ((count >> 8) & 0xFF));
 }
 
-extern void arch_halt();
-
 void pit_interrupt_rate_generator(uint16_t frequency) {
     uint16_t frequency_divisor = 1193180 / frequency;
     outb(PIT_COMMAND_MODE_REGISTER, PIT_COMMAND_CHANNEL_0 | PIT_COMMAND_ACCESS_LOW_BYTE_HIGH_BYTE | PIT_COMMAND_MODE_RATE_GENERATOR | PIT_COMMAND_BINARY_MODE);
@@ -39,5 +37,3 @@ uint16_t pit_get_counter_value(uint8_t channel) {
             return counter_value;            
     }
 }
-
-

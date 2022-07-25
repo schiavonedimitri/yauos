@@ -15,8 +15,11 @@ spinlock_t console_lock = 0;
  * This routine prints an unsigned integer of 32 bits by converting it into its ASCII representation.
  * The basic formula to get the ascii value from the integer value is: value % base + '0'.
  */
+
 static void print_int_u32(uint32_t value, uint8_t base) {
+	
 	// If the number si just one digit print it and return.
+	
 	if (value == 0) {
 		if (bootconsole_is_enabled()) {
 			bootconsole_put_char((value % base) + '0');
@@ -25,20 +28,27 @@ static void print_int_u32(uint32_t value, uint8_t base) {
 	}
 	size_t size = 0;
 	uint32_t tmp = value;
+	
 	// Calculate the size for the buffer to hold the ASCII string of the number.
+	
 	while (tmp) {
 		size++;
 		tmp /= base;
 	}
+	
 	// Add one for the NULL character.
 	char buf[size + 1];
 	buf[size] = 0;
+	
 	// Fill the created buffer in reverse order.
+	
 	while (value) {
 		buf[--size] = (value % base) + '0';
 		value /= base;
 	}
+	
 	// Finally print the ASCII string containing the number.
+	
 	if (bootconsole_is_enabled()) {
 		bootconsole_put_string(&buf[0], strlen(&buf[0]));
 	}
@@ -166,7 +176,9 @@ static void print_hex_32(uint32_t value) {
 	bool first_non_zero = 0;
 	for (size_t i = 0, j = sizeof(uint32_t) * 8 - 4; i < sizeof(uint32_t) * 2; i++, j -= 4) {
 		char c = index[((value & (((uint32_t) 0xF) << j)) >> j)];
+		
 		// This is done for removing any leading zeroes.
+		
 		if (c != '0') {
 			first_non_zero = 1;
 		}
@@ -239,9 +251,13 @@ void _printk(bool panic, const char* restrict format, ...) {
 	lock(&console_lock);
 	va_list parameters;
 	va_start(parameters, format);
+	
 	// While format is not a NULL character
+	
 	while (*format) {
+		
 		// This first case handles printing the format string from the first character up to % excluded as a normal string.
+		
 		if (format[0] != '%' || format[1] == '%') {
 			if (format[0] == '%') {
 				format++;
@@ -256,7 +272,9 @@ void _printk(bool panic, const char* restrict format, ...) {
 			format += amount;
 			continue;
 		}
+		
 		// Save the position after the % character in case it isn't one of those below (meeaning it's not implemented).
+		
 		const char *format_begun_at = format++;
 		if (*format == 'c') {
 			format++;
@@ -312,7 +330,9 @@ void _printk(bool panic, const char* restrict format, ...) {
 				bootconsole_put_string(str, strlen(str));
 			}
 		}
+		
 		// Print the string or character after the '%' character because it wasn't found above.
+		
 		else {
 			format = format_begun_at;
             size_t len = strlen(format);
@@ -323,7 +343,9 @@ void _printk(bool panic, const char* restrict format, ...) {
 		}
 	}
 	va_end(parameters);
+	
 	// This implements the panic() macro like function and halts the machine after the printout is done.
+	
 	if(panic) {
 		cli();
 		halt();

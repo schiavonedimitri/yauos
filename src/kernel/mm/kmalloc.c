@@ -28,37 +28,39 @@ static Header *freep;
  * Returns 0 on success or -1 in case of failure.
  */
 
-ssize_t k_malloc_init() {
+int k_malloc_init() {
 	heap_brk = PAGE_ROUND_UP(kernel_virtual_end);
 	heap_end = heap_brk + KERNEL_HEAP_SIZE;
-	//panic("heap break: %x\nheap end: %x\n", heap_brk, heap_end);
     bool failed = false;
     size_t failed_idx = 0;
     virt_addr_t tmp = heap_brk;
     for (size_t i = 0; i < KERNEL_HEAP_SIZE / PAGE_SIZE; i++) {
         phys_addr_t frame = get_free_frame();
         if (frame != (phys_addr_t) -1) {
-            if (map_page(frame, tmp, PROT_PRESENT | PROT_KERN | PROT_READ_WRITE)) {
-                tmp += PAGE_SIZE;
-                continue;
-            }
-            else {
-                failed = true;
+			if (map_page(frame, tmp, PROT_PRESENT | PROT_KERN | PROT_READ_WRITE, true)) {
+				failed = true;
                 failed_idx = i;
                 break;
+            }
+            else {
+				tmp += PAGE_SIZE;
+                continue;               
             }
         }
         else {
             failed = true;
             failed_idx = i;
+			break;
         }
     }
     if (failed) {
         virt_addr_t tmp2 = heap_brk;
-        for (size_t i = 0; i < failed_idx; i++) {
-            unmap_page(tmp2);
-            tmp2 += PAGE_SIZE;
-        }
+		if (failed_idx != 0) {
+			for (size_t i = 0; i < failed_idx; i++) {
+            	unmap_page(tmp2);
+            	tmp2 += PAGE_SIZE;
+        	}
+		}
         return -1;
     }
 	printk("[KERNEL]: Heap initialized.\n[KERNEL]: Heap start: %x\n[KERNEL]: Heap end: %x\n[KERNEL]: Heap size: %dMb\n", heap_brk, heap_end, (heap_end - heap_brk) / (1024 * 1024));
@@ -72,7 +74,7 @@ ssize_t k_malloc_init() {
 
 static void* k_sbrk(size_t amount) {
 	if ((size_t) heap_brk + amount > (size_t) heap_end) {
-		return (void*) -1;
+		return NULL;
 	}
 	void *prev_brk = (void*) heap_brk;
 	heap_brk = (virt_addr_t) ((size_t) heap_brk + amount);
@@ -121,7 +123,7 @@ static Header* k_morecore(size_t n_units) {
 		n_units = MORECORE_DEFAULT;
 	}
 	p = k_sbrk(n_units * sizeof(Header));
-	if (p == (void*) -1) {
+	if (p == NULL) {
 		return NULL;
 	}
 	hp = (Header*) p;

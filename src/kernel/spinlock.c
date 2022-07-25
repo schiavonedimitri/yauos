@@ -1,4 +1,5 @@
 #include <arch/cpu/cpu.h>
+#include <arch/cpu/smp.h>
 #include <kernel/spinlock.h>
 
 inline void lock(spinlock_t *lock) {

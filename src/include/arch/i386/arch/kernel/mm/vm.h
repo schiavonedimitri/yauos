@@ -1,6 +1,7 @@
 #ifndef _VM_H
 #define _VM_H
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <arch/paging.h>
 #include <arch/types.h>
@@ -22,7 +23,7 @@
 extern void flush_tlb_single(virt_addr_t);
 extern page_directory_t kernel_directory;
 
-ssize_t map_page(phys_addr_t, virt_addr_t, uint16_t);
-void unmap_page(virt_addr_t);
+int map_page(phys_addr_t, virt_addr_t, uint16_t, bool);
+int unmap_page(virt_addr_t);
 
 #endif /** _VM_H */

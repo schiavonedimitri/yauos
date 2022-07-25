@@ -31,7 +31,7 @@ int vga_init(void) {
 			vga_buffer[index] = vga_entry(' ', vga_color);
 		}
 	}
-	return 1;
+	return 0;
 }
 
 static void vga_put_entry_at(unsigned char c, uint8_t color, size_t x, size_t y) {

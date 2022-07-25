@@ -65,6 +65,7 @@ isr_no_err_stub(43)
 isr_no_err_stub(44)
 isr_no_err_stub(45)
 isr_no_err_stub(46)
+isr_no_err_stub(47)
 
 .global isr_common_stub
 .type isr_common_stub, @function

@@ -19,6 +19,7 @@
  */
 
 // Heap_brk is initially already aligned to a page boundary in boot.S
+
 static virt_addr_t heap_brk = (virt_addr_t) &bootmem_start;
 static virt_addr_t heap_end = (virt_addr_t) &bootmem_end;
 static Header base;

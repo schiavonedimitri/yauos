@@ -28,9 +28,13 @@ int bootconsole_init(bootconsole_type_t console_type) {
 		case BOOTCONSOLE_VGA_TEXT_MODE:
 			bootconsole = &bootconsole_vga_text_mode;
 			break;
+			
 			//TODO: support other bootconsole types in the future, like framebuffer etc...
+		
 		default:
+			
 			//default to the serial implementation.
+			
 			bootconsole = &bootconsole_serial;
 	};
 	return bootconsole->console_init();

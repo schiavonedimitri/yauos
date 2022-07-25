@@ -15,7 +15,7 @@ int bootconsole_mem_init() {
 		cur_index = 0;
 		already_initialized = 1;
 	}
-	return 1;
+	return 0;
 }
 
 void bootconsole_mem_put_char(char c) {

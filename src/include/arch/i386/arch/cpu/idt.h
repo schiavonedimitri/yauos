@@ -2,6 +2,7 @@
 #define IDT_H
 
 #include <arch/cpu/gdt.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 #define INTERRUPT_GATE 0xE
@@ -45,7 +46,7 @@ typedef struct idt_descriptor idt_descriptor_t;
 					(uint16_t) ((handler >> 0x10) & 0xFFFF) \
 	}
 
-void idt_init();
+void idt_init(bool);
 
 /*
  * This function is used for addding/removing/modifying idt entries at runtime.

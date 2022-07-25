@@ -5,7 +5,8 @@
 #include <stdint.h>
 #include <arch/arch.h>
 
-/* This header contains the definition of the structure of boot parameters the kernel expects to be passed. This is necessary for the kernel to be architecture independent.
+/*
+ * This header contains the definition of the structure of boot parameters the kernel expects to be passed. This is necessary for the kernel to be architecture independent.
  * All architectures that want to support the kernel need to pass boot information in a way the kernel understands it.
  */
 

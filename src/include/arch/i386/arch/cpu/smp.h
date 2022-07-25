@@ -1,14 +1,18 @@
 #ifndef MP_H
 #define MP_H
 
+#include <stdbool.h>
+#include <stdint.h>
 #include <arch/types.h>
+
+extern bool smp;
+extern size_t num_cpus;
+extern phys_addr_t local_apic_address;
+extern phys_addr_t io_apic_address;
 
 /*
  * Intel MP spec definitions.
- */
-
-
-/*
+ *
  * Places to look for the mp floating pointer structure according to the mp specification.
  */
 
@@ -204,6 +208,6 @@ typedef struct mp_floating_pointer_structure {
     uint8_t mp_feature_bytes[5];
 } mp_floating_pointer_structure_t;
 
-void mp_init(void);
+void smp_init(void);
 
 #endif /** MP_H */

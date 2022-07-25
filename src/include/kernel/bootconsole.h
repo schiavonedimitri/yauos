@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <arch/types.h>
 #include <kernel/spinlock.h>
 
 extern spinlock_t bootconsole_lock;

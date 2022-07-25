@@ -44,6 +44,10 @@ void interrupt_handler(interrupt_context_t *context) {
     }
 }
 
-void register_interrupt_handler(uint8_t interrupt_number, interrupt_handler_t handler) {
+int register_interrupt_handler(uint8_t interrupt_number, interrupt_handler_t handler) {
+    if (interrupt_number <= 31) {
+        return -1;
+    }
     interrupt_handler_table[interrupt_number] = handler;
+    return 0;
 }

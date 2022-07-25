@@ -18,9 +18,10 @@ typedef union header {
 } Header;
 
 // This is set so that the minimum allocation request to the physical memory manger will be the size of a page which is the natural allocation size of the system.
+
 #define MORECORE_DEFAULT PAGE_SIZE / sizeof(Header)
 
-ssize_t k_malloc_init();
+int k_malloc_init();
 void *k_malloc(size_t);
 void *k_zmalloc(size_t);
 void k_free(void*);
