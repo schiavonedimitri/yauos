@@ -78,6 +78,7 @@ isr_common_stub:
     mov %ax, %ds
     mov %ax, %es
     mov %ax, %fs
+    mov $GDT_KERNEL_PER_CPU_DATA_OFFSET, %ax
     mov %ax, %gs
     pushl %esp
     call interrupt_handler
@@ -86,6 +87,11 @@ isr_common_stub:
     mov %ax, %ds
     mov %ax, %es
     mov %ax, %fs
+
+    # TODO: for now interrupts start and return to kernel so reload kernel gs segment.
+    # When user mode will be implemented remember this and act accordingly! 
+
+    mov $GDT_KERNEL_PER_CPU_DATA_OFFSET, %ax
     mov %ax, %gs
     popa
     addl $8, %esp

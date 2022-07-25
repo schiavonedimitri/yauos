@@ -45,13 +45,12 @@ void gdt_init(uint8_t lapic_id) {
 
 	// Add default entries
 	
-	cpu_data_t *c = &cpu_data[lapic_id];
 	gdt[0] = SEGMENT_NULL;
 	gdt[1] = SEGMENT_KCODE(0, 0xFFFFFFFF);
 	gdt[2] = SEGMENT_KDATA(0, 0xFFFFFFFF);
 	gdt[3] = SEGMENT_NULL;
 	gdt[4] = SEGMENT_NULL;
-	gdt[5] = SEGMENT_KDATA(&c->cpu, 4);
+	gdt[5] = SEGMENT_KDATA(&cpu_data[lapic_id].cpu, 4);
 	gdt_descriptor->table_size = (sizeof(gdt_entry_t) * GDT_MAX_ENTRIES) - 1;
 	gdt_descriptor->table_address = &gdt[0];
 	cpu_data[lapic_id].gdt = (virt_addr_t*) gdt_descriptor->table_address;

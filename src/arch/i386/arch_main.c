@@ -413,7 +413,7 @@ void smp_main(uint8_t lapic_id) {
 	printk("AP[%x]: started!\n", lapic_id);
 	gdt_init(lapic_id);
 	idt_init(false);
-	printk("AP[%x]: initialized!\nAP[%x]: gdt address: %x\n", lapic_id, lapic_id, cpu->gdt);
+	printk("AP[%x]: initialized!\nAP[%x]: gdt address: %x\n", cpu->lapic_id, cpu->lapic_id, cpu->gdt);
 	halt();
 }
 
@@ -575,5 +575,6 @@ void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 			ap_stack_virtual += 4096;
 		}
 	}
+	printk("BSP[%x]: gdt address: %x\n", cpu->lapic_id, cpu->gdt);
 	kernel_main(boot_info);
 }
