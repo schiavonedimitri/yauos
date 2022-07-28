@@ -25,5 +25,6 @@ extern page_directory_t kernel_directory;
 
 int map_page(phys_addr_t, virt_addr_t, uint16_t, bool);
 int unmap_page(virt_addr_t);
+void do_page_fault(virt_addr_t);
 
 #endif /** _VM_H */

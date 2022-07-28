@@ -57,9 +57,13 @@ exception_no_err_stub(31)
 .type exception_common_stub, @function
 
 exception_common_stub:
-    pusha
-    mov %ds, %ax
-    pushl %eax
+    pushal
+    pushl %gs
+    pushl %fs
+    pushl %es
+    pushl %ds
+    pushl %ss
+    cld
     mov $GDT_KERNEL_DATA_OFFSET, %ax
     mov %ax, %ds
     mov %ax, %es
@@ -69,17 +73,18 @@ exception_common_stub:
     pushl %esp
     call exception_common_handler
     addl $4, %esp
-    pop %eax
-    mov %ax, %ds
-    mov %ax, %es
-    mov %ax, %fs
+    popl %ds
+    popl %es
+    popl %fs
+    popl %gs
+    addl $4, %esp
 
     # TODO: for now interrupts start and return to kernel so reload kernel gs segment.
     # When user mode will be implemented remember this and act accordingly! 
 
     mov $GDT_KERNEL_PER_CPU_DATA_OFFSET, %ax
     mov %ax, %gs
-    popa
+    popal
     addl $8, %esp
     iret 
 .size exception_common_stub, . - exception_common_stub

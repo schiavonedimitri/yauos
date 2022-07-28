@@ -145,7 +145,7 @@ static inline void write_cr0(uint32_t cr0) {
 }
 
 static inline uint32_t read_cr2(void) {
-    uint32_t cr2;
+    virt_addr_t cr2;
     asm volatile("movl %%cr2, %0;" : "=r" (cr2));
     return cr2;
 }

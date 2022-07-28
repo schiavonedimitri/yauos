@@ -24,7 +24,8 @@
         "spinlock.h": "c",
         "types.h": "c",
         "assert.h": "c",
-        "cpuid.h": "c"
+        "cpuid.h": "c",
+        "exception_interrupt.h": "c"
     },
     "git.enableCommitSigning": true
 }

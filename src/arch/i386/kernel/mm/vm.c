@@ -106,3 +106,7 @@ int unmap_page(virt_addr_t address) {
     flush_tlb_single(address);
     return 0;
 }
+
+void do_page_fault(virt_addr_t fault_address) {
+    panic("Page fault at address: %x\n", fault_address);
+}
