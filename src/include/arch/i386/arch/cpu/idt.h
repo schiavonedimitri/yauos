@@ -46,6 +46,8 @@ typedef struct idt_descriptor idt_descriptor_t;
 					(uint16_t) ((handler >> 0x10) & 0xFFFF) \
 	}
 
+extern void load_idt(idt_descriptor_t*);
+
 void idt_init(bool);
 
 /*

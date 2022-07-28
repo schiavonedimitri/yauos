@@ -3,11 +3,13 @@ The project is still in its earliest stages and although not much functionality 
 You can find them on the [wiki](https://github.com/schiavonedimitri/yauos/wiki/Build-Instructions)
 As soon as the project takes shape more info will be added and the wiki updated.
 
-Update: Since this is an educational homemade hobby operating system i'm making in my free time to learn more about Os development, i have decided to lower the project ambitions to simplify coding and getting something functional in less time.
-The new goals for YauOs are:
-- Being a Unix like clone with Posix compatibily.
-- Support for the i386 32 bit architecture only.
-- Support for booting only on legacy bios systems (no UEFI support).
+Project goals:
+- Being a Unix like clone with Posix compatibily in the future.
+- Support for the x86 32 bit architecture only.
+- Support for CPUS with integrated x87 FPU only.
+- Support for CPUS with SSE2 instructions only. 
+- Support for booting only on legacy MBR BIOS systems (no UEFI GPT support).
 - Support only for PC-AT platform.
-- Support SMP only with the old MP specification.
-- Being able to boot and work properly on real hardware (although old hardware).
+- Support for SMP only with the old MP specification.
+- Support for Intel Hyperthreading.
+- Being able to boot and work properly on real hardware (although mostly old hardware).

@@ -23,7 +23,8 @@
         "smp.h": "c",
         "spinlock.h": "c",
         "types.h": "c",
-        "assert.h": "c"
+        "assert.h": "c",
+        "cpuid.h": "c"
     },
     "git.enableCommitSigning": true
 }

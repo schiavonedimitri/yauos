@@ -31,6 +31,7 @@ typedef struct bootinfo {
 	size_t memory_map_entries;
 	memory_entry_t *memory_map_entry;
 	uint64_t memory_size;
+	char *command_line;
 } bootinfo_t;
 
 #endif /** BOOTINFO_H */

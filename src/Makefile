@@ -29,7 +29,8 @@ BOOTCONSOLE?=serial
 EARLY_HEAP_SIZE?=0x1000
 KERNEL_HEAP_SIZE?=0x4000000
 DEBUG_ENABLE?=0
-SMP?=yes
+SMP?=1
+CPU?=coreduo-v1
 
 ifeq ($(DEBUG_ENABLE), 1)
 	DEBUG:=-DDEBUG
@@ -41,16 +42,16 @@ else
 	OPTIMIZATION=-O3
 endif
 
-ifeq ($(SMP), yes)
+ifeq ($(SMP), 1)
 	QEMU_SMP:=-smp 4,sockets=4
 else
 	QEMU_SMP:=
 endif
 
-ifeq ($(QEMU_CPU), "")
+ifeq ($(CPU),)
 	QEMU_CPU:=
 else
-	QEMU_CPU:=-cpu coreduo-v1
+	QEMU_CPU:=-cpu $(CPU)
 endif
 
 CFLAGS:=$(OPTIMIZATION) $(DEBUG_INFO) -MMD -MP -I$(INCLUDE_DIR) -I$(INCLUDE_ARCH_DIR) -I$(INCLUDE_PLATFORM_DIR)

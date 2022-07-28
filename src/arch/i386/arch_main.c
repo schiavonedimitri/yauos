@@ -1,3 +1,5 @@
+#include <cpuid.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <arch/align.h>
@@ -35,6 +37,7 @@ extern void pmm_init(bootinfo_t*);
 extern void kernel_main(bootinfo_t*);
 
 bootinfo_t *boot_info;
+bool arch_init = true;
 bool ap_started = 0;
 
 static void parse_cmdline(multiboot2_information_header_t *m_boot2_info) {
@@ -47,6 +50,12 @@ static void parse_cmdline(multiboot2_information_header_t *m_boot2_info) {
 		
 		if (tag->type == MULTIBOOT2_TAG_BOOT_COMMANDLINE_TYPE) {
 			multiboot2_tag_boot_command_line_t *cmd_line = (multiboot2_tag_boot_command_line_t*) tag;
+			char *saved_cmd_line = (char*) b_malloc(sizeof(char) * cmd_line->size);
+			if (!saved_cmd_line) {
+				panic("[KERNEL]: Failed to allocate memory! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
+			}
+			memcpy(saved_cmd_line, cmd_line->string, cmd_line->size);
+			boot_info->command_line = saved_cmd_line;
 			size_t n_args = 0;
 			
 			//9 is the size in bytes of an empty command line. See multiboot2.h file.
@@ -361,6 +370,55 @@ static int boot_console_init() {
 	return 0;
 }
 
+static int check_cpuid() {
+	if (!__get_cpuid_max(0, NULL)) {
+		return -1;
+	}
+	return 0;
+}
+
+static int check_sse2() {
+	unsigned int unused, edx = 0;
+	__get_cpuid(1, &unused, &unused, &unused, &edx);
+	if (edx & (1 << 26)) {
+		return 0;
+	}
+	return -1;
+}
+
+static int check_fxsave_fxrstr() {
+	unsigned unused, edx = 0;
+	__get_cpuid(1, &unused, &unused, &unused, &edx);
+	if (edx & (1 << 24)) {
+		return 0;
+	}
+	return -1;
+}
+
+static int check_fpu() {
+	unsigned unused, edx = 0;
+	__get_cpuid(1, &unused, &unused, &unused, &edx);
+	if (edx & 0x1) {
+		return 0;
+	}
+	return -1;
+}
+
+static int init_fpu() {
+	uint32_t cr0 = read_cr0();
+	
+	// Enable FPU exceptions and enable interaction with the TS bit in cr0 upon task switches to save/load fpu context.
+	
+	cr0 |= (1 << CR0_MONITOR_CO_PROCESSOR_SHIFT) | (1 << CR0_X87_FPU_ERROR_REPORTING_SHIFT);
+	
+	// Disable FPU emulation exceptions because we have onboard FPU (and only support that).
+	
+	cr0 &= ~(1 << CR0_X87_FPU_SHIFT);
+	write_cr0(cr0);
+	asm volatile("fninit\n");	
+	return 0;
+}
+
 /*
  * Code from here and beyond is just a mess that i was doing for testing smp booting.
  * Now that i got it working it's time to properly setup things.
@@ -413,7 +471,8 @@ void smp_main(uint8_t lapic_id) {
 	printk("AP[%x]: started!\n", lapic_id);
 	gdt_init(lapic_id);
 	idt_init(false);
-	printk("AP[%x]: initialized!\nAP[%x]: gdt address: %x\n", cpu->lapic_id, cpu->lapic_id, cpu->gdt);
+	init_fpu();
+	printk("AP[%x]: initialized!\nAP[%x]: gdt address: %x\nper cpu structure address: %x\n", cpu->lapic_id, cpu->lapic_id, cpu->gdt, cpu);
 	halt();
 }
 
@@ -424,7 +483,7 @@ void smp_main(uint8_t lapic_id) {
  */
 
 void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
-	
+
 	/* 
 	 * Setup initial bootconsole device to the memory ringbuffer for early output.
 	 * The bootconsole is the first thing initialized after gdt and idt to have significant output in case of boot failure or in case 
@@ -439,7 +498,7 @@ void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	if (!boot_info) {
 		panic("[KERNEL]: Failed to allocate memory! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 	}
-	boot_info->memory_size = 0;
+	memset(boot_info, 0x0, sizeof(bootinfo_t));
 	
 	/*
 	 * TODO: move the command line parsing one layer above the architecture specific code and initialize the early console with a fixed default one.
@@ -453,11 +512,26 @@ void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	if (boot_console_init()) {
 		panic("[KERNEL]: Failed to initialize bootconsole!\n");
 	}
+
+	if (check_cpuid()) {
+		panic("[KERNEL]: This CPU does not support the cpuid instruction. This kernel needs a more recent CPU to run properly!\n");
+	}
+	if (check_sse2()) {
+		panic("[KERNEL]: This CPU does not support the SSE2 instructions. This kernel needs a more recent CPU to run properly!\n");
+	}
+	if (check_fxsave_fxrstr()) {
+		panic("[KERNEL]: This CPU does not support the FXSAVE/FXRSTR instructions. This kernel needs a more recent CPU to run properly!\n");
+	}
+	if (check_fpu()) {
+		panic("[KERNEL]: This CPU does not have an onboard FPU. This kernel needs an onboard FPU to run properly!\n");
+	}
+
+	init_fpu();
 	
 	// If the kernel wasn't loaded by a multiboot2 compliant bootloader fail as we rely on the provided memory map.
 	
 	if (magic != MULTIBOOT2_MAGIC) {
-		panic("[KERNEL]: This kernel must be loaded by a Multiboot2 compliant bootloader! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
+		panic("[KERNEL]: This kernel must be loaded by a Mu(ltiboot2 compliant bootloader! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 	}
 	
 	// Parse the multiboot2 memory map and format it according to the way the upper kernel layer expects it.
@@ -496,7 +570,6 @@ void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 		}
 		pic_enable_irq_line(0);
 		sti();
-		pit_interrupt_on_terminal_count(1200);
 		void *dest = (void*) PHYSICAL_TO_VIRTUAL(0x1000);
 		memcpy(dest, &_binary_boot_ap_start, (size_t) &_binary_boot_ap_size);
 		
@@ -575,6 +648,7 @@ void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 			ap_stack_virtual += 4096;
 		}
 	}
-	printk("BSP[%x]: gdt address: %x\n", cpu->lapic_id, cpu->gdt);
+	printk("BSP[%x]: gdt address: %x\nper cpu structure address: %x\ncurrent directory: %x\n", cpu->lapic_id, cpu->gdt, cpu);
+	arch_init = false;
 	kernel_main(boot_info);
 }

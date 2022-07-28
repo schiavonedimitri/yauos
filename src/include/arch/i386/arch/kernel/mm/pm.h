@@ -21,6 +21,5 @@ typedef struct bitmap_list {
 
 extern virt_addr_t _KERNEL_START_;
 extern virt_addr_t _KERNEL_END_;
-static int reserve_region(phys_addr_t, size_t);
 
 #endif /** _PM_H */
