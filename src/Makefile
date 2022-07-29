@@ -55,7 +55,7 @@ else
 endif
 
 CFLAGS:=$(OPTIMIZATION) $(DEBUG_INFO) -MMD -MP -I$(INCLUDE_DIR) -I$(INCLUDE_ARCH_DIR) -I$(INCLUDE_PLATFORM_DIR)
-CFLAGS+=-ffreestanding -Wall -Wextra -std=gnu11 -DEARLY_HEAP_SIZE=$(EARLY_HEAP_SIZE) -DKERNEL_HEAP_SIZE=$(KERNEL_HEAP_SIZE) -DSMP=$(SMP) $(DEBUG)
+CFLAGS+=-fno-omit-frame-pointer -ffreestanding -Wall -Wextra -std=gnu11 -DEARLY_HEAP_SIZE=$(EARLY_HEAP_SIZE) -DKERNEL_HEAP_SIZE=$(KERNEL_HEAP_SIZE) -DSMP=$(SMP) $(DEBUG)
 LDFLAGS:=-T $(ARCH_DIR)/$(ARCH).ld -nostdlib
 
 LIBS:=-lgcc

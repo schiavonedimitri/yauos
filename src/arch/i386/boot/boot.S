@@ -255,6 +255,10 @@
 		addl $(KERNEL_VIRTUAL_BASE - KERNEL_PHYSICAL_BASE), %ebx
 		pushl %ebx
 		pushl %eax
+
+		# NULL stack frame for stack tracing
+
+		xorl %ebp, %ebp 
 		
 		# architecture entry point
 		

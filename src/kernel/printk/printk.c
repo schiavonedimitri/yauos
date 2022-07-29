@@ -348,6 +348,10 @@ void _printk(bool panic, const char* restrict format, ...) {
 	
 	if(panic) {
 		cli();
+
+		// This allows multiple cpus to panic. In the future a better system wide panic should be implemented!
+
+		unlock(&console_lock);
 		halt();
 	}
 	unlock(&console_lock);

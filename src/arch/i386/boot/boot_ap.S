@@ -96,6 +96,10 @@ _ap_start32:
     
     movl _ap_start16 - 16, %eax
     pushl %eax
+
+    # NULL stack frame for stack tracing
+
+	xorl %ebp, %ebp 
     
     # Call CPU main entry point from the passed parameters.
     

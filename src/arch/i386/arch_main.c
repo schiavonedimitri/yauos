@@ -650,5 +650,6 @@ void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 	}
 	printk("BSP[%x]: gdt address: %x\nper cpu structure address: %x\ncurrent directory: %x\n", cpu->lapic_id, cpu->gdt, cpu);
 	arch_init = false;
+	asm volatile("xorl %eax, %eax\nidiv %eax, %eax");
 	kernel_main(boot_info);
 }
