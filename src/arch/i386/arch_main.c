@@ -68,7 +68,7 @@ static void parse_cmdline(multiboot2_information_header_t *m_boot2_info) {
 				// Calculate how much to allocate for the kernel arguments. Args are separated by a space or null character.
 				
 				if (cmd_line->string[i] == ' ' || cmd_line->string[i] == '\0') {
-					n_args++;
+				        n_args++;
 				}
 			}
 			boot_info->karg_entries = n_args;
@@ -462,7 +462,7 @@ static void timer_callback() {
 void delay(uint32_t ms) {
 	uint32_t end = elapsed_milliseconds + ms;
 	while (elapsed_milliseconds < end) {
-		halt();
+		arch_halt();
 	}
 }
 
@@ -473,7 +473,10 @@ void smp_main(uint8_t lapic_id) {
 	idt_init(false);
 	init_fpu();
 	printk("AP[%x]: initialized!\nAP[%x]: gdt address: %x\nper cpu structure address: %x\n", cpu->lapic_id, cpu->lapic_id, cpu->gdt, cpu);
-	halt();
+	if (lapic_id == 3) {
+		asm volatile("xorl %eax, %eax\nidiv %eax, %eax");
+	}
+	arch_halt();
 }
 
 /*
@@ -569,7 +572,7 @@ void arch_main(uint32_t magic, multiboot2_information_header_t *m_boot2_info) {
 			panic("[KERNEL]: Could not register interrupt handler! File: %s line: %d function: %s\n", __FILENAME__, __LINE__, __func__);
 		}
 		pic_enable_irq_line(0);
-		sti();
+		arch_sti();
 		void *dest = (void*) PHYSICAL_TO_VIRTUAL(0x1000);
 		memcpy(dest, &_binary_boot_ap_start, (size_t) &_binary_boot_ap_size);
 		

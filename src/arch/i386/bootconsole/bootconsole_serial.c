@@ -6,14 +6,14 @@
 #include "bootconsole_serial.h"
 
 inline static int transmit_empty() {
-   return inb(LINE_STATUS_REGISTER(COM1_PORT)) & 0x20;
+        return inb(LINE_STATUS_REGISTER(COM1_PORT)) & 0x20;
 }
 
 int bootconsole_serial_init() {
 	
 	// Disable interrupts.
 	
-	outb(INTERRUPT_ENABLE_REGISTER(COM1_PORT), INTERRUPT_DISABLE);
+        outb(INTERRUPT_ENABLE_REGISTER(COM1_PORT), INTERRUPT_DISABLE);
 	
 	// Enable DLAB so that the first and second ports become the low and high byte of the baud rate divisor.
 	

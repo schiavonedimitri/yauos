@@ -1,18 +1,18 @@
 #ifndef ASSERT_H
-#define ASSERT_H
+        #define ASSERT_H
 
-#include <kernel/printk.h>
+        #include <kernel/printk.h>
 
-#define __FILENAME__ (__builtin_strrchr(__FILE__, '/') ? __builtin_strrchr(__FILE__, '/') + 1 : __FILE__)
+        #define __FILENAME__ (__builtin_strrchr(__FILE__, '/') ? __builtin_strrchr(__FILE__, '/') + 1 : __FILE__)
 
-#ifdef DEBUG
+        #ifdef DEBUG
 
-#define assert(expression) ((expression) ? (void) 0 : panic("Assertion failed: \"" #expression "\" file: %s function: %s line: %d\n", __FILENAME__, __func__, __LINE__))
+                #define assert(expression) ((expression) ? (void) 0 : panic("Assertion failed: \"" #expression "\" file: %s function: %s line: %d\n", __FILENAME__, __func__, __LINE__))
 
-#else
+        #else
 
-#define assert(expression)
+                #define assert(expression)
 
-#endif
+        #endif
 
 #endif /** ASSERT_H */

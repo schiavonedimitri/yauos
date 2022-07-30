@@ -21,7 +21,7 @@
 		
 		ljmpl $0x8, $0f
 
-	0:
-	ret
+                0:
+                        ret
 
 	.size load_gdt, . - load_gdt

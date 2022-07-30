@@ -23,7 +23,7 @@ int bootconsole_init(bootconsole_type_t console_type) {
 			bootconsole = &bootconsole_mem;
 			break;
 		case BOOTCONSOLE_SERIAL:
-			bootconsole = &bootconsole_serial;
+		        bootconsole = &bootconsole_serial;
 			break;
 		case BOOTCONSOLE_VGA_TEXT_MODE:
 			bootconsole = &bootconsole_vga_text_mode;

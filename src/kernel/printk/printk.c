@@ -9,7 +9,17 @@
 #include <kernel/spinlock.h>
 #include <lib/string.h>
 
-spinlock_t console_lock = 0;
+/*
+ * TODO: when the VFS will be implemented move the locking to che console device.
+ * Also note that even though locking is working here, callers have exclusive 
+ * printing access only for single calls; e.g. 2 consecutive _printk calls
+ * can produce overlapping output between different callers.
+ */
+
+spinlock_t console_lock = {
+	name: "printk",
+	lock: 0,
+};
 
 /*
  * This routine prints an unsigned integer of 32 bits by converting it into its ASCII representation.
@@ -347,12 +357,12 @@ void _printk(bool panic, const char* restrict format, ...) {
 	// This implements the panic() macro like function and halts the machine after the printout is done.
 	
 	if(panic) {
-		cli();
+		arch_cli();
 
 		// This allows multiple cpus to panic. In the future a better system wide panic should be implemented!
 
 		unlock(&console_lock);
-		halt();
+		arch_halt();
 	}
 	unlock(&console_lock);
 }

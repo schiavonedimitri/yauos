@@ -25,6 +25,6 @@ void kernel_main(bootinfo_t *boot_info) {
 		}
 	}
 	while(1) {
-		halt();
+		arch_halt();
 	}
 }

@@ -48,6 +48,9 @@ void gdt_init(uint8_t lapic_id) {
 	gdt[0] = SEGMENT_NULL;
 	gdt[1] = SEGMENT_KCODE(0, 0xFFFFFFFF);
 	gdt[2] = SEGMENT_KDATA(0, 0xFFFFFFFF);
+
+	// The next 2 segments refer to the usermode code and data segments which will be added later and are set to NULL for now.
+
 	gdt[3] = SEGMENT_NULL;
 	gdt[4] = SEGMENT_NULL;
 	gdt[5] = SEGMENT_KDATA(&cpu_data[lapic_id].cpu, 8);

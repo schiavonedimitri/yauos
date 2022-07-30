@@ -22,7 +22,10 @@ static bitmap_list_t *bitmap_list = NULL;
 static size_t total_blocks = 0;
 static size_t total_reserved_blocks = 0;
 static size_t total_used_blocks = 0;
-spinlock_t pmm_lock = 0;
+spinlock_t pmm_lock = {
+        name: "pmm",
+	lock: 0,
+};
 
 #ifdef DEBUG
 

@@ -21,9 +21,9 @@ int bitmap_first_unset(void *bitmap, size_t size) {
 	size_t rem_bits = size % 32;
 	for (size_t i = 0; i < size / 32; i++) {
 		if (b_map[i] != 0xFFFFFFFF) {
-			for (size_t j = 0; j < 32; j++) {
+		        for (size_t j = 0; j < 32; j++) {
 				if (!(b_map[i] & (1 << j))) {
-                    return (i * 32) + j;
+                                        return (i * 32) + j;
 				}
 			}
 		}
@@ -34,6 +34,6 @@ int bitmap_first_unset(void *bitmap, size_t size) {
 				return ((size / 32) * 32) + j;
 			}
 		}
-    }
+        }
 	return -1;
 }

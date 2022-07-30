@@ -3,19 +3,19 @@
 #include <kernel/spinlock.h>
 
 inline void lock(spinlock_t *lock) {
-    if (!smp) {
-        cli();
-    }
-    else {
-        while(xchg(1, lock) != 0);
-    }
+        if (!smp) {
+                arch_cli();
+        }
+        else {
+                while(arch_atomic_swap(1, &(lock->lock)) != 0);
+        }
 }
 
 inline void unlock(spinlock_t *lock) {
-    if (!smp) {
-        sti();
-    }
-    else {
-        *lock = 0;
-    }
+        if (!smp) {
+                arch_sti();
+        }
+        else {
+                lock->lock = 0;
+        }
 }

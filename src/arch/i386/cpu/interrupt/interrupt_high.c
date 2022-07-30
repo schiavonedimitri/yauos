@@ -14,7 +14,7 @@ extern bool arch_init;
 static interrupt_handler_t interrupt_handler_table[256];
 
 int register_interrupt_handler(uint8_t interrupt_number, interrupt_handler_t handler) {
-    
+
     /* 
      * Return failure in case something tries to register these interrupt numbers:
      * 0 - 31 as they are reserved for CPU exceptions.

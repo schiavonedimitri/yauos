@@ -31,40 +31,40 @@ static Header *freep;
 int k_malloc_init() {
 	heap_brk = PAGE_ROUND_UP(kernel_virtual_end);
 	heap_end = heap_brk + KERNEL_HEAP_SIZE;
-    bool failed = false;
-    size_t failed_idx = 0;
-    virt_addr_t tmp = heap_brk;
-    for (size_t i = 0; i < KERNEL_HEAP_SIZE / PAGE_SIZE; i++) {
-        phys_addr_t frame = get_free_frame();
-        if (frame != (phys_addr_t) -1) {
-			if (map_page(frame, tmp, PROT_PRESENT | PROT_KERN | PROT_READ_WRITE, true)) {
-				failed = true;
-                failed_idx = i;
-                break;
-            }
-            else {
-				tmp += PAGE_SIZE;
-                continue;               
-            }
+        bool failed = false;
+        size_t failed_idx = 0;
+        virt_addr_t tmp = heap_brk;
+        for (size_t i = 0; i < KERNEL_HEAP_SIZE / PAGE_SIZE; i++) {
+                phys_addr_t frame = get_free_frame();
+                if (frame != (phys_addr_t) -1) {
+                        if (map_page(frame, tmp, PROT_PRESENT | PROT_KERN | PROT_READ_WRITE, true)) {
+                                failed = true;
+                                failed_idx = i;
+                                break;
+                        }
+                        else {
+                                tmp += PAGE_SIZE;
+                                continue;               
+                        }
+                }
+                else {
+                        failed = true;
+                        failed_idx = i;
+                        break;
+                }
         }
-        else {
-            failed = true;
-            failed_idx = i;
-			break;
+        if (failed) {
+                virt_addr_t tmp2 = heap_brk;
+		        if (failed_idx != 0) {
+			        for (size_t i = 0; i < failed_idx; i++) {
+            	                        unmap_page(tmp2);
+            	                        tmp2 += PAGE_SIZE;
+        	                }
+		        }
+                return -1;
         }
-    }
-    if (failed) {
-        virt_addr_t tmp2 = heap_brk;
-		if (failed_idx != 0) {
-			for (size_t i = 0; i < failed_idx; i++) {
-            	unmap_page(tmp2);
-            	tmp2 += PAGE_SIZE;
-        	}
-		}
-        return -1;
-    }
 	printk("[KERNEL]: Heap initialized.\n[KERNEL]: Heap start: %x\n[KERNEL]: Heap end: %x\n[KERNEL]: Heap size: %dMb\n", heap_brk, heap_end, (heap_end - heap_brk) / (1024 * 1024));
-    return 0;
+        return 0;
 }
 
 /*

@@ -41,7 +41,7 @@ static void vga_put_entry_at(unsigned char c, uint8_t color, size_t x, size_t y)
 
 static void vga_clear_line(size_t row) {
 	for (size_t i = 0; i < VGA_WIDTH; i++) {
-	vga_put_entry_at(0, vga_color, i, row);
+	        vga_put_entry_at(0, vga_color, i, row);
 	}
 }
 
@@ -62,7 +62,7 @@ void vga_put_char(char c) {
 		vga_column = 0;
 		return;
 	}
-    else if (uc == '\t') {
+        else if (uc == '\t') {
 		for (size_t i = 0; i < VGA_TAB_SIZE; i++) {
 			vga_put_entry_at(' ', vga_color, vga_column, vga_row);
 			if (++vga_column > VGA_WIDTH) {
@@ -77,14 +77,14 @@ void vga_put_char(char c) {
 			}
 		}
 	}
-    else {
-		if(wrapped){
+        else {
+		if(wrapped) {
 			vga_clear_line_from_column(vga_row, vga_column + 1);
 		}
-		vga_put_entry_at(uc, vga_color, vga_column, vga_row);
+	        vga_put_entry_at(uc, vga_color, vga_column, vga_row);
 	}
 	if (++vga_column == VGA_WIDTH) {
-		vga_column = 0;
+	        vga_column = 0;
 		if (++vga_row == VGA_HEIGHT) {
 			wrapped = 1;
 			vga_row = 0;
@@ -100,7 +100,7 @@ void vga_put_string(const char* s, size_t size) {
 }
 
 void vga_set_color(uint8_t fg_color, uint8_t bg_color) {
-	vga_color = vga_entry_color(fg_color, bg_color);
+        vga_color = vga_entry_color(fg_color, bg_color);
 }
 
 void vga_set_fg_color(uint8_t fg_color) {
